@@ -14,8 +14,8 @@ Stan na 2026-10-31. Region AWS: eu-central-1 (ADR-0008).
 ```mermaid
 flowchart LR
     %% ===== Aktorzy =====
-    client(["👤 Klient"])
-    admin(["🛠️ Administrator"])
+    client(["👤 Klient<br/><i>anonimowy</i>"])
+    admin(["🛠️ Administrator<br/><i>logowanie</i>"])
 
     %% ===== Cloudflare =====
     subgraph CF["Cloudflare"]
@@ -34,7 +34,7 @@ flowchart LR
 
         subgraph EC2["EC2 t3.small · Docker Compose · ADR-0005"]
             caddy["<b>Caddy</b><br/>TLS, reverse proxy :443"]
-            adminapi["<b>admin-api</b><br/>FastAPI<br/>+ consumer SQS"]
+            adminapi["<b>admin-api</b><br/>Spring Boot + Spring Security<br/>+ consumer SQS · ADR-0011"]
             pg[("<b>Postgres</b><br/>próbki, joby,<br/>rejestr modeli, logi")]
         end
 
@@ -100,11 +100,12 @@ flowchart LR
 ### Kluczowe granice
 - **Inference jest odcięte od ciężkiej pracy.** Lambda nie dotyka Postgresa ani Batcha — tylko zwraca wynik i wrzuca log do SQS.
 - **Publiczne API nie tworzy instancji.** admin-api jedynie zleca joby do kolejek Batch; cyklem życia instancji zarządza Batch.
+- **Granica języków.** Java (admin-api) i Python (Lambda, workery) nie wołają się bezpośrednio — tylko przez Batch, SQS, S3 i aliasy Lambdy (ADR-0011).
 - **Jedno źródło cech.** Lambda i workery używają tego samego `packages/features/` (ADR-0002).
 
 ## Luki, które ujawnił diagram (do decyzji)
 
-1. **Uwierzytelnianie i role klient/admin** — wymagane przez `kontekst-projektu.md`, nieustalone. Kandydaci: Amazon Cognito vs własne JWT w admin-api. Dotyczy też tego, czy ocena tekstu wymaga logowania.
+1. ~~**Uwierzytelnianie i role klient/admin**~~ — rozstrzygnięte w ADR-0011: klient anonimowy, admin loguje się przez Spring Security w admin-api.
 2. **Jak Lambda dostaje model championa.** ADR-0004 zakłada model „zapieczony w obrazie”, ale wtedy promocja wymaga zbudowania nowego obrazu — a workery Batch nie powinny budować obrazów. Kandydat: spaCy w obrazie, model XGBoost + profil cech pobierane z S3 w fazie init; wersja modelu jako zmienna środowiskowa **wersji** Lambdy, promocja = opublikowanie nowej wersji + przełączenie aliasu. Koszt: dłuższy cold start o pobranie małego pliku.
 3. **Status jobów:** callback workerów do admin-api vs polling Batch / EventBridge. Wpływa na to, czy workery potrzebują dostępu sieciowego do EC2.
 4. **Skąd workery biorą wagi LLM** — pobieranie z Hugging Face przy każdym jobie vs cache w S3 (kilka GB na model).
