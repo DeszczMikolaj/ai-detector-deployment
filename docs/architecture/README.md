@@ -27,7 +27,7 @@ flowchart LR
     subgraph AWS["AWS · eu-central-1"]
         subgraph INF["Ścieżka inference · ADR-0004"]
             apigw["<b>API Gateway</b><br/><i>throttling = rate limit</i>"]
-            lambda["<b>Lambda: inference</b><br/>container image<br/>spaCy + packages/features + XGBoost<br/><i>alias: champion</i>"]
+            lambda["<b>Lambda: inference</b><br/>container image<br/>spaCy + packages/features<br/>model XGBoost z S3 · ADR-0012<br/><i>alias: champion</i>"]
         end
 
         sqs[["<b>SQS</b><br/>logi zapytań<br/><i>bez surowego tekstu · ADR-0006</i>"]]
@@ -106,6 +106,6 @@ flowchart LR
 ## Luki, które ujawnił diagram (do decyzji)
 
 1. ~~**Uwierzytelnianie i role klient/admin**~~ — rozstrzygnięte w ADR-0011: klient anonimowy, admin loguje się przez Spring Security w admin-api.
-2. **Jak Lambda dostaje model championa.** ADR-0004 zakłada model „zapieczony w obrazie”, ale wtedy promocja wymaga zbudowania nowego obrazu — a workery Batch nie powinny budować obrazów. Kandydat: spaCy w obrazie, model XGBoost + profil cech pobierane z S3 w fazie init; wersja modelu jako zmienna środowiskowa **wersji** Lambdy, promocja = opublikowanie nowej wersji + przełączenie aliasu. Koszt: dłuższy cold start o pobranie małego pliku.
+2. ~~**Jak Lambda dostaje model championa**~~ — rozstrzygnięte w ADR-0012: model i profil cech z S3 (wersja w `MODEL_URI` wersji Lambdy), promocja = nowa wersja + przełączenie aliasu.
 3. **Status jobów:** callback workerów do admin-api vs polling Batch / EventBridge. Wpływa na to, czy workery potrzebują dostępu sieciowego do EC2.
 4. **Skąd workery biorą wagi LLM** — pobieranie z Hugging Face przy każdym jobie vs cache w S3 (kilka GB na model).
