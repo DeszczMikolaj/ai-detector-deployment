@@ -5,12 +5,13 @@ Instrukcje dla agentów AI (Codex, Claude Code, Cursor) i dla ludzi pracujących
 ## Kontekst — przeczytaj przed pracą
 - `docs/kontekst-projektu.md` — założenia projektu (**źródło prawdy**).
 - `docs/adr/` — decyzje architektoniczne (ADR). Indeks, odstępstwa i backlog: `docs/adr/README.md`.
+- `docs/architecture/` — diagramy architektury (Mermaid).
 - Jeśli zadanie jest sprzeczne z `kontekst-projektu.md` lub z przyjętym ADR — **zatrzymaj się i zgłoś konflikt**, nie rozwiązuj go po cichu.
 
 ## O projekcie (skrót)
 Projekt wdrożeniowy (studencki, ale ze standardami produkcyjnymi):
 - **Inference:** klient wysyła tekst → klasyfikator (XGBoost na cechach stylometrycznych, spaCy `pl_core_news_lg`) zwraca ocenę AI vs człowiek. AWS Lambda (container image) za API Gateway.
-- **Retraining (admin):** nowe próbki ludzkie → generacja próbek AI lokalnymi LLM-ami → trening → champion vs challenger → promocja tylko lepszego modelu. Efemeryczne zasoby (AWS Batch, GPU Spot).
+- **Retraining (admin):** nowe próbki ludzkie → generacja próbek AI lokalnymi LLM-ami → trening → champion vs challenger → promocja tylko lepszego modelu. Efemeryczne zasoby (AWS Batch, workery CPU na Spot, GPU opcjonalne — ADR-0010).
 - **Panel admina:** FastAPI + Postgres na EC2 (Docker Compose).
 
 ## Struktura repo
