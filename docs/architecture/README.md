@@ -46,13 +46,13 @@ flowchart LR
             workers["<b>Workery pipeline'u</b><br/>EC2 CPU · skalowanie do zera<br/>generacja LLM (llama.cpp / Ollama)<br/>trening XGBoost · ewaluacja"]
         end
 
-        s3[("<b>S3</b><br/>modele, profile cech,<br/>datasety, próbki, backupy")]
+        s3[("<b>S3</b><br/>modele, profile cech, datasety,<br/>próbki, backupy,<br/>lustro wag LLM · ADR-0014")]
         ecr[("<b>ECR</b><br/>obrazy: Lambda,<br/>workery, admin-api")]
         cw["<b>CloudWatch</b><br/>logi i metryki wszystkich usług,<br/>alarmy, Budgets"]
     end
 
     %% ===== Zewnętrzne =====
-    hf["<b>Hugging Face</b><br/>wagi lokalnych LLM"]
+    hf["<b>Hugging Face</b><br/>źródło wag lokalnych LLM"]
     gh["<b>GitHub Actions</b><br/>CI/CD · OIDC"]
 
     %% ===== Przepływ: klient =====
@@ -74,7 +74,7 @@ flowchart LR
     adminapi -->|"SubmitJob"| qod
     qspot --> workers
     qod --> workers
-    workers <-->|"próbki, modele,<br/>metryki"| s3
+    workers <-->|"wagi LLM, próbki,<br/>modele, metryki"| s3
     BATCH -.->|"zmiana stanu joba"| eb
     eb -.-> sqsjobs
     workers -.->|"postęp"| sqsjobs
@@ -84,7 +84,7 @@ flowchart LR
     %% ===== Artefakty i infrastruktura =====
     lambda -.->|"model championa"| s3
     adminapi -.->|"pg_dump"| s3
-    hf -.->|"pobranie wag"| s3
+    hf -.->|"jednorazowa kopia<br/>(przypięta wersja)"| s3
     gh -->|"push obrazów"| ecr
 
     %% ===== Style =====
@@ -109,9 +109,9 @@ flowchart LR
 - **Granica języków.** Java (admin-api) i Python (Lambda, workery) nie wołają się bezpośrednio — tylko przez Batch, SQS, S3 i aliasy Lambdy (ADR-0011).
 - **Jedno źródło cech.** Lambda i workery używają tego samego `packages/features/` (ADR-0002).
 
-## Luki, które ujawnił diagram (do decyzji)
+## Luki, które ujawnił diagram (wszystkie rozstrzygnięte)
 
 1. ~~**Uwierzytelnianie i role klient/admin**~~ — rozstrzygnięte w ADR-0011: klient anonimowy, admin loguje się przez Spring Security w admin-api.
 2. ~~**Jak Lambda dostaje model championa**~~ — rozstrzygnięte w ADR-0012: model i profil cech z S3 (wersja w `MODEL_URI` wersji Lambdy), promocja = nowa wersja + przełączenie aliasu.
 3. ~~**Status jobów**~~ — rozstrzygnięte w ADR-0013: zdarzenia Batch → EventBridge → SQS `job-events` → admin-api; postęp od workerów do tej samej kolejki.
-4. **Skąd workery biorą wagi LLM** — pobieranie z Hugging Face przy każdym jobie vs cache w S3 (kilka GB na model).
+4. ~~**Skąd workery biorą wagi LLM**~~ — rozstrzygnięte w ADR-0014: lustro w S3 z przypiętymi wersjami i SHA-256; każdy job pobiera wagi z S3, bez połączeń z Hugging Face w trakcie pipeline'u.

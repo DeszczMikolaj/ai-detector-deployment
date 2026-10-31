@@ -17,6 +17,7 @@ Format: decyzja → uzasadnienie → konsekwencje / trade-offy. Przyjętych ADR 
 | [0011](0011-backend-admina-spring.md) | Backend admina w Spring Boot + Spring Security; Python tylko w części ML | przyjęta |
 | [0012](0012-model-championa-z-s3.md) | Model championa ładowany z S3; obraz Lambdy zawiera tylko kod i spaCy | przyjęta |
 | [0013](0013-status-jobow-eventbridge-sqs.md) | Status jobów przez EventBridge i SQS (publisher–subscriber) | przyjęta |
+| [0014](0014-lustro-wag-llm-s3.md) | Lustro wag lokalnych LLM w S3 z przypiętymi wersjami | przyjęta |
 
 Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura → Decyzje architektoniczne (ADR). **Źródłem prawdy jest to repozytorium.**
 
@@ -32,4 +33,5 @@ Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura �
 - Limit zapytań per IP dla anonimowego endpointu oceny: Cloudflare vs AWS WAF (ADR-0011).
 - Bucket S3 na modele: wersjonowanie, prefiksy zapisywane raz, polityka retencji starych wersji modeli i Lambdy (ADR-0012).
 - Reguła EventBridge (Batch → SQS `job-events`), DLQ z alarmem, schemat wiadomości postępu; idempotentny consumer w admin-api (ADR-0013).
+- Lustro wag LLM w S3 + katalog modeli w Postgresie (źródło, wersja, SHA-256, licencja); pomiar czasu pobierania przy pierwszym uruchomieniu (ADR-0014).
 - Pipeline generacji idempotentny i podzielny na porcje; dwie kolejki Batch (`spot`, `ondemand`) i przełącznik trybu awaryjnego w panelu admina (ADR-0010).
