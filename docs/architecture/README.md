@@ -31,6 +31,8 @@ flowchart LR
         end
 
         sqs[["<b>SQS</b><br/>logi zapytań<br/><i>bez surowego tekstu · ADR-0006</i>"]]
+        eb["<b>EventBridge</b><br/>zdarzenia stanu jobów Batch"]
+        sqsjobs[["<b>SQS job-events</b><br/>stany i postęp jobów<br/><i>ADR-0013</i>"]]
 
         subgraph EC2["EC2 t3.small · Docker Compose · ADR-0005"]
             caddy["<b>Caddy</b><br/>TLS, reverse proxy :443"]
@@ -73,7 +75,10 @@ flowchart LR
     qspot --> workers
     qod --> workers
     workers <-->|"próbki, modele,<br/>metryki"| s3
-    workers -.->|"status joba"| adminapi
+    BATCH -.->|"zmiana stanu joba"| eb
+    eb -.-> sqsjobs
+    workers -.->|"postęp"| sqsjobs
+    sqsjobs -.->|"odbiór"| adminapi
     adminapi -->|"promocja:<br/>przełączenie aliasu"| lambda
 
     %% ===== Artefakty i infrastruktura =====
@@ -92,7 +97,8 @@ flowchart LR
     class hf,gh,fe,proxy ext
     class s3,ecr,pg store
     class apigw,lambda,caddy,adminapi,workers,cw compute
-    class sqs,qspot,qod queue
+    class sqs,sqsjobs,qspot,qod queue
+    class eb compute
 ```
 
 **Legenda:** linia ciągła — wywołanie synchroniczne; przerywana — asynchroniczne / dostęp do artefaktów.
@@ -107,5 +113,5 @@ flowchart LR
 
 1. ~~**Uwierzytelnianie i role klient/admin**~~ — rozstrzygnięte w ADR-0011: klient anonimowy, admin loguje się przez Spring Security w admin-api.
 2. ~~**Jak Lambda dostaje model championa**~~ — rozstrzygnięte w ADR-0012: model i profil cech z S3 (wersja w `MODEL_URI` wersji Lambdy), promocja = nowa wersja + przełączenie aliasu.
-3. **Status jobów:** callback workerów do admin-api vs polling Batch / EventBridge. Wpływa na to, czy workery potrzebują dostępu sieciowego do EC2.
+3. ~~**Status jobów**~~ — rozstrzygnięte w ADR-0013: zdarzenia Batch → EventBridge → SQS `job-events` → admin-api; postęp od workerów do tej samej kolejki.
 4. **Skąd workery biorą wagi LLM** — pobieranie z Hugging Face przy każdym jobie vs cache w S3 (kilka GB na model).
