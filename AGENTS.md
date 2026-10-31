@@ -5,20 +5,21 @@ Instrukcje dla agentów AI (Codex, Claude Code, Cursor) i dla ludzi pracujących
 ## Kontekst — przeczytaj przed pracą
 - `docs/kontekst-projektu.md` — założenia projektu (**źródło prawdy**).
 - `docs/adr/` — decyzje architektoniczne (ADR). Indeks, odstępstwa i backlog: `docs/adr/README.md`.
+- `docs/architecture/` — diagramy architektury (Mermaid).
 - Jeśli zadanie jest sprzeczne z `kontekst-projektu.md` lub z przyjętym ADR — **zatrzymaj się i zgłoś konflikt**, nie rozwiązuj go po cichu.
 
 ## O projekcie (skrót)
 Projekt wdrożeniowy (studencki, ale ze standardami produkcyjnymi):
 - **Inference:** klient wysyła tekst → klasyfikator (XGBoost na cechach stylometrycznych, spaCy `pl_core_news_lg`) zwraca ocenę AI vs człowiek. AWS Lambda (container image) za API Gateway.
-- **Retraining (admin):** nowe próbki ludzkie → generacja próbek AI lokalnymi LLM-ami → trening → champion vs challenger → promocja tylko lepszego modelu. Efemeryczne zasoby (AWS Batch, GPU Spot).
-- **Panel admina:** FastAPI + Postgres na EC2 (Docker Compose).
+- **Retraining (admin):** nowe próbki ludzkie → generacja próbek AI lokalnymi LLM-ami → trening → champion vs challenger → promocja tylko lepszego modelu. Efemeryczne zasoby (AWS Batch, workery CPU na Spot, GPU opcjonalne — ADR-0010).
+- **Panel admina:** Spring Boot + Spring Security + Postgres na EC2 (Docker Compose) — ADR-0011. Python tylko w części ML (Lambda, workery, `packages/features/`).
 
 ## Struktura repo
 ```
 docs/                     # kontekst + ADR
 packages/features/        # preprocessing + ekstrakcja cech — JEDYNE źródło dla treningu i inference
 services/inference/       # obraz Lambdy
-services/admin-api/       # FastAPI + consumer SQS
+services/admin-api/       # Spring Boot (Java): panel admina, auth, consumer SQS, zlecanie jobów Batch
 pipelines/retraining/     # generacja, trening, ewaluacja, promocja
 infra/terraform/          # IaC
 .github/workflows/        # CI/CD
@@ -32,9 +33,11 @@ infra/terraform/          # IaC
 5. **Bez surowego tekstu klientów w logach** (ADR-0006, RODO). Logujemy hash, długość, cechy, wynik.
 6. **Wejście API zawsze z limitem długości tekstu** (ochrona przed DoS — ADR-0002).
 7. **Determinizm:** stałe seedy w treningu i ekstrakcji cech (m.in. szum w NVG).
+8. **Java ↔ Python tylko przez kontrakty.** Żadnych bezpośrednich wywołań między `services/admin-api/` a kodem Pythona; komunikacja przez Batch, SQS, S3 i aliasy Lambdy według schematów w repo (ADR-0011).
 
 ## Konwencje
 - Dokumentacja i ADR: po polsku. Kod, nazwy, commity: po angielsku.
+- Języki: Java (Spring Boot) w `services/admin-api/`; Python w `services/inference/`, `pipelines/`, `packages/`.
 - Commity: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
 - Gałęzie: `feat/...`, `fix/...`, `docs/...`. **Nigdy nie pushuj bezpośrednio na `main`** — zmiany wyłącznie przez PR z co najmniej jednym review (ADR-0009).
 - **Nowa decyzja architektoniczna = nowy plik ADR** (`docs/adr/NNNN-krotki-tytul.md`, format jak istniejące) + wpis w `docs/adr/README.md`. Nie edytuj treści przyjętego ADR — zastąp go nowym (status `zastąpiona przez ADR-XXXX`).
