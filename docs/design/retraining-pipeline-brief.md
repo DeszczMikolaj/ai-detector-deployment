@@ -52,7 +52,7 @@ Znane ograniczenia: generacja ~2 min/próbkę na CPU (spike z ADR-0010); docelow
 11. **Maksymalny rozmiar puli** i co się dzieje po jego przekroczeniu: retencja (najstarsze wypadają), deduplikacja, selekcja reprezentatywna (np. klastrowanie po cechach), selekcja najbardziej informatywnych próbek?
 12. **Balans:** czy pula ma być zbalansowana 50/50 człowiek/AI? Per domena? Per generator?
 13. **Zapominanie:** czy próbki ze starszych generatorów zostają, żeby model nadal je wykrywał? Kto i jak decyduje o ich usunięciu?
-14. **Snapshot datasetu:** jak zapisujemy niezmienny zbiór użyty do treningu (manifest z ID próbek + hash w S3)? Musi dać się odtworzyć każdy model.
+14. **Pochodzenie modelu:** jak zapisujemy, z czego powstał każdy model (manifest: ID i hashe próbek, wersja kodu i konfiguracji, generatory)? Czy wymagamy możliwości ponownego wytrenowania starych modeli — a jeśli tak, to których (np. tylko obecny champion i jego poprzednik) i jak godzimy to z retencją puli (pytanie 11)?
 
 ### D. Trening
 15. **Podział train / validation / test:** losowy, stratyfikowany, czy grupowy? ⚠️ Próbka ludzka i wygenerowane z niej próbki AI muszą trafić **do tego samego** podzbioru — inaczej wyciek informacji i zawyżone wyniki.
