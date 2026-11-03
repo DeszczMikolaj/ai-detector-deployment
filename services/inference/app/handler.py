@@ -14,12 +14,18 @@ import json
 import os
 import time
 
-import spacy
-
 # ---------- INIT: raz na środowisko wykonawcze ----------
-_init_started = time.perf_counter()
-NLP = spacy.load("pl_core_news_lg", disable=["ner", "textcat"])
-INIT_SECONDS = round(time.perf_counter() - _init_started, 3)
+_import_started = time.perf_counter()
+import spacy  # noqa: E402 — import mierzony osobno (tysiące plików bibliotek)
+
+IMPORT_SECONDS = round(time.perf_counter() - _import_started, 3)
+
+SPACY_MODEL = os.environ.get("SPACY_MODEL", "pl_core_news_lg")
+_load_started = time.perf_counter()
+NLP = spacy.load(SPACY_MODEL, disable=["ner", "textcat"])
+INIT_SECONDS = round(time.perf_counter() - _load_started, 3)
+
+print(json.dumps({"event": "init", "model": SPACY_MODEL, "import_seconds": IMPORT_SECONDS, "load_seconds": INIT_SECONDS}))
 
 MAX_TEXT_CHARS = int(os.environ.get("MAX_TEXT_CHARS", "20000"))
 SPACY_VERSION = spacy.__version__
@@ -79,10 +85,11 @@ def handler(event, context):
         },
         "timing": {
             "cold_start": cold_start,
+            "import_seconds": IMPORT_SECONDS if cold_start else None,
             "init_seconds": INIT_SECONDS if cold_start else None,
             "processing_ms": processing_ms,
         },
-        "versions": {"spacy": SPACY_VERSION, "pl_core_news_lg": MODEL_VERSION},
+        "versions": {"spacy": SPACY_VERSION, "model": SPACY_MODEL, "model_version": MODEL_VERSION},
     }
 
     # Log bez treści tekstu (ADR-0006): długość, hash, czasy.

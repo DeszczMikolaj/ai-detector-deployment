@@ -74,6 +74,9 @@ resource "aws_lambda_function" "inference" {
 }
 
 # Alias `champion` — API zawsze woła alias, nigdy wersję bezpośrednio (ADR-0004, ADR-0012).
+# TODO: na etapie tracera Terraform przestawia alias na najnowszą wersję przy każdym apply.
+# Docelowo (ADR-0012) alias przestawia admin-api przy promocji — wtedy dodać:
+#   lifecycle { ignore_changes = [function_version] }
 resource "aws_lambda_alias" "champion" {
   count            = local.inference_enabled ? 1 : 0
   name             = "champion"

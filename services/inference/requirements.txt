@@ -1,3 +1,3 @@
-# Wersja spaCy i modelu przypięta do wersji używanej w treningu (ai-text-recognition) — ADR-0002, train/serve skew.
+# Wersja spaCy przypięta do wersji używanej w treningu (ai-text-recognition) — ADR-0002, train/serve skew.
+# Model językowy (pl_core_news_*) instaluje Dockerfile na podstawie argumentu SPACY_MODEL.
 spacy==3.8.13
-pl_core_news_lg @ https://github.com/explosion/spacy-models/releases/download/pl_core_news_lg-3.8.0/pl_core_news_lg-3.8.0-py3-none-any.whl
