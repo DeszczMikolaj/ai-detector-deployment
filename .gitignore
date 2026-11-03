@@ -1,0 +1,45 @@
+# Sekrety
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dane i modele (trzymamy w S3)
+data/
+datasets/
+models/
+artifacts/
+*.csv
+*.parquet
+*.pkl
+*.joblib
+*.json.gz
+*.ubj
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
