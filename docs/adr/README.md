@@ -18,6 +18,7 @@ Format: decyzja → uzasadnienie → konsekwencje / trade-offy. Przyjętych ADR 
 | [0012](0012-model-championa-z-s3.md) | Model championa ładowany z S3; obraz Lambdy zawiera tylko kod i spaCy | przyjęta |
 | [0013](0013-status-jobow-eventbridge-sqs.md) | Status jobów przez EventBridge i SQS (publisher–subscriber) | przyjęta |
 | [0014](0014-lustro-wag-llm-s3.md) | Lustro wag lokalnych LLM w S3 z przypiętymi wersjami | przyjęta |
+| [0015](0015-model-spacy-md-dla-inference.md) | Model spaCy `pl_core_news_md` zamiast `lg` (warunek utrzymania inference na Lambdzie) | proponowana — czeka na zespół ML |
 
 Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura → Decyzje architektoniczne (ADR). **Źródłem prawdy jest to repozytorium.**
 
@@ -25,7 +26,10 @@ Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura �
 - Dodanie próbek nie uruchamia automatycznie retrainingu: próbki trafiają do stanu `pending`, retraining uruchamia admin lub próg N nowych próbek (do potwierdzenia przy projektowaniu pipeline'u).
 
 ## Backlog (must have)
-- MFA na root (min. dwa urządzenia) zaraz po zakończeniu upgrade'u do planu Paid; tożsamości dla członków zespołu (ADR-0008).
+- **Zespół ML:** przetrenować klasyfikator na cechach z `pl_core_news_md` i porównać jakość z `lg` na tym samym zbiorze testowym — rozstrzyga ADR-0015 ([spike](../spikes/2026-11-03-inference-lambda-cold-start.md)).
+- Zmierzyć kolejny cold start Lambdy z `md` (obraz w cache) i cold start z pełnym pipeline'em cech (ADR-0015).
+- Członkowie zespołu: zaproszenia e-mailem w AWS Settings (IAM Identity Center niedostępne w new AWS experience) (ADR-0008).
+- MFA na root (min. dwa urządzenia) zaraz po zakończeniu upgrade'u do planu Paid (ADR-0008).
 - Bramka walidacji schematu cech w pipeline retrainingu (liczba, kolejność, typy, zakresy kolumn) przed porównaniem champion vs challenger.
 - Włączenie ochrony gałęzi `main` (ADR-0009).
 - Schematy kontraktów Java ↔ Python (parametry jobów Batch, wiadomości SQS, artefakty w S3) jako JSON Schema w repo + testy kontraktowe (ADR-0011).
