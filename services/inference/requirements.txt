@@ -1,3 +1,3 @@
-# Wersja spaCy musi zgadzać się z modelem językowym i z wersją używaną w treningu (ADR-0002, train/serve skew).
-spacy>=3.8,<3.9
+# Wersja spaCy i modelu przypięta do wersji używanej w treningu (ai-text-recognition) — ADR-0002, train/serve skew.
+spacy==3.8.13
 pl_core_news_lg @ https://github.com/explosion/spacy-models/releases/download/pl_core_news_lg-3.8.0/pl_core_news_lg-3.8.0-py3-none-any.whl
