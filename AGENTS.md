@@ -6,6 +6,7 @@ Instrukcje dla agentów AI (Codex, Claude Code, Cursor) i dla ludzi pracujących
 - `docs/kontekst-projektu.md` — założenia projektu (**źródło prawdy**).
 - `docs/adr/` — decyzje architektoniczne (ADR). Indeks, odstępstwa i backlog: `docs/adr/README.md`.
 - `docs/architecture/` — diagramy architektury (Mermaid).
+- `docs/spikes/` — wyniki eksperymentów technicznych (pomiary, wnioski).
 - `docs/design/` — briefy projektowe dla części w trakcie projektowania (np. pipeline retrainingu).
 - Jeśli zadanie jest sprzeczne z `kontekst-projektu.md` lub z przyjętym ADR — **zatrzymaj się i zgłoś konflikt**, nie rozwiązuj go po cichu.
 
