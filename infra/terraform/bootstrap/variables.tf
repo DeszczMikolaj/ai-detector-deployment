@@ -7,7 +7,7 @@ variable "region" {
 variable "project" {
   description = "Prefiks nazw i wartość tagu Project."
   type        = string
-  default     = "tai-detektor"
+  default     = "ai-text-detector"
 }
 
 variable "noncurrent_version_retention_days" {

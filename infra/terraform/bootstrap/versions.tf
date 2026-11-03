@@ -12,11 +12,11 @@ terraform {
   # Krok 2: odkomentuj blok poniżej, wpisz nazwę bucketa z outputu `state_bucket_name`
   #         i uruchom `terraform init -migrate-state` — stan bootstrapu trafi do bucketa.
   #
-  # backend "s3" {
-  #   bucket       = "<state_bucket_name z outputu>"
-  #   key          = "bootstrap/terraform.tfstate"
-  #   region       = "eu-north-1"
-  #   encrypt      = true
-  #   use_lockfile = true
-  # }
+  backend "s3" {
+    bucket       = "ai-text-detector-tfstate-366366122547-eu-north-1"
+    key          = "bootstrap/terraform.tfstate"
+    region       = "eu-north-1"
+    encrypt      = true
+    use_lockfile = true
+  }
 }
