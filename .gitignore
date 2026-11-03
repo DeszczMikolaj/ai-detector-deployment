@@ -1,45 +1,40 @@
-# Sekrety
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# Zmienne mogą zawierać sekrety — przykładowe wartości trzymamy w *.tfvars.example
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Sekrety i lokalne środowisko (AGENTS.md, zasada 2)
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-
-# Dane i modele (trzymamy w S3)
-data/
-datasets/
-models/
-artifacts/
-*.csv
-*.parquet
-*.pkl
-*.joblib
-*.json.gz
-*.ubj
 
 # Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-*.egg-info/
-dist/
-build/
-.ipynb_checkpoints/
 
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-!*.tfvars.example
-crash.log
+# Java / Gradle / Maven
+target/
+build/
+.gradle/
 
 # IDE / OS
 .idea/
 .vscode/
+*.iml
 .DS_Store
 Thumbs.db
