@@ -9,7 +9,7 @@ Poziomy według modelu [C4](https://c4model.com/):
 
 ## Diagram kontenerów
 
-Stan na 2026-10-31. Region AWS: eu-central-1 (ADR-0008).
+Stan na 2026-10-31. Region AWS: eu-north-1 (ADR-0008).
 
 ```mermaid
 flowchart LR
@@ -24,7 +24,7 @@ flowchart LR
     end
 
     %% ===== AWS =====
-    subgraph AWS["AWS · eu-central-1"]
+    subgraph AWS["AWS · eu-north-1"]
         subgraph INF["Ścieżka inference · ADR-0004"]
             apigw["<b>API Gateway</b><br/><i>throttling = rate limit</i>"]
             lambda["<b>Lambda: inference</b><br/>container image<br/>spaCy + packages/features<br/>model XGBoost z S3 · ADR-0012<br/><i>alias: champion</i>"]
