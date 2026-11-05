@@ -1,7 +1,0 @@
-spacy==3.8.13
-numpy>=1.26
-networkx>=3.0
-ts2vg>=1.2
-
-[test]
-pytest>=8
