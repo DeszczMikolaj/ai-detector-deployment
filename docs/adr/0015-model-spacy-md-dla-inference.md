@@ -1,17 +1,21 @@
-# ADR-0015: Model spaCy `pl_core_news_md` zamiast `lg` (warunek utrzymania inference na Lambdzie)
+# ADR-0015: Model spaCy `pl_core_news_md` zamiast `lg` — inference zostaje na Lambdzie
 
-- **Status:** proponowana — czeka na decyzję zespołu ML (przetrenowanie i porównanie jakości)
-- **Data:** 2026-11-03
+- **Status:** przyjęta
+- **Data:** 2026-11-03 (propozycja), 2026-11-05 (przyjęta)
+- **Zastępuje częściowo:** ADR-0002 — wybór modelu spaCy (`lg` → `md`); reszta ADR-0002 obowiązuje
 - **Dotyczy:** ADR-0002 (detektor, spaCy `lg`), ADR-0004 (inference na Lambdzie)
 - **Podstawa:** [spike z 2026-11-03](../spikes/2026-11-03-inference-lambda-cold-start.md)
 
 ## Kontekst
 Spike wykazał, że Lambda z `pl_core_news_lg` ma cold start > 60 s (samo `spacy.load` ~51 s), co przekracza limit API Gateway (29 s) — każde zapytanie trafiające na nowe środowisko kończy się błędem. Przyczyną jest ilość danych modelu czytanych przy starcie z leniwie podłączanego obrazu, nie CPU. Ten sam test z `pl_core_news_md`: `spacy.load` 3,2 s, pierwszy cold start nowego obrazu ~14,5 s, warm 120–200 ms end-to-end. Pamięci Lambdy na tym koncie nie da się zwiększyć ponad 3008 MB.
 
-## Proponowana decyzja
+## Decyzja
 1. Pipeline cech (trening i inference) przechodzi na **`pl_core_news_md` 3.8.0** (spaCy 3.8.13), pod warunkiem że po przetrenowaniu klasyfikatora jakość jest akceptowalna.
 2. **Kryterium akceptacji** (do potwierdzenia przez zespół ML w ramach briefu retrainingu, pytania 18–22): metryka główna na tym samym zbiorze testowym nie gorsza od modelu na `lg` o więcej niż ustalony próg (np. 1 p.p.), bez istotnej regresji per domena.
 3. Jeśli kryterium nie jest spełnione → zostajemy przy `lg`, a inference przenosimy na **stale działający kontener** (ECS Fargate z min. 1 zadaniem i autoskalowaniem, albo kontener na EC2 obok admin-api) — nowy ADR zastępujący ADR-0004.
+
+## Rozstrzygnięcie (2026-11-05)
+Zespół ML przetrenował klasyfikator na cechach liczonych `pl_core_news_md` i uznał jakość za akceptowalną. Na decyzję zespołu szczegółowe wyniki porównania nie są dokumentowane w tym repozytorium. **Inference zostaje na Lambdzie (ADR-0004)**; wariant zapasowy (stały kontener z `lg`) nie jest realizowany.
 
 ## Konsekwencje
 - **Przy przyjęciu:** ADR-0004 (Lambda) pozostaje w mocy; ADR-0002 zmienia model spaCy z `lg` na `md` — wymagany ponowny trening, nowy profil cech (ADR-0007) i nowa wersja modelu (ADR-0012). Obraz Lambdy ~1,3 GB zamiast ~2,4 GB.
