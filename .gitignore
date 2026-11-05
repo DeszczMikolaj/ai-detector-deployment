@@ -38,3 +38,6 @@ build/
 *.iml
 .DS_Store
 Thumbs.db
+
+# Artefakty treningu (modele, cache cech) — trafiają do S3, nie do gita (AGENTS.md, zasada 3)
+artifacts/

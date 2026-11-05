@@ -45,7 +45,10 @@ infra/terraform/          # IaC
 - **Nowa decyzja architektoniczna = nowy plik ADR** (`docs/adr/NNNN-krotki-tytul.md`, format jak istniejące) + wpis w `docs/adr/README.md`. Nie edytuj treści przyjętego ADR — zastąp go nowym (status `zastąpiona przez ADR-XXXX`).
 
 ## Komendy
-_Do uzupełnienia, gdy powstanie kod (instalacja zależności, testy, lint, build obrazu)._
+- **Pakiet cech:** `pip install -e packages/features[test]` + model `pl_core_news_md` 3.8.0 (link w `packages/features/README.md`); testy: `cd packages/features && pytest -q`.
+- **Trening + artefakt modelu:** `pip install -r pipelines/retraining/requirements.txt`, potem `python pipelines/retraining/train.py --data ... --labels ... --out artifacts/<nazwa>` (szczegóły: `pipelines/retraining/README.md`).
+- **Obraz inference:** `docker build --platform linux/amd64 --provenance=false -t <ecr>:<tag> services/inference` (szczegóły: `infra/terraform/envs/dev/README.md`).
+- **Infrastruktura:** `terraform plan` → review → `terraform apply` w `infra/terraform/...` (zasada 4).
 
 <!-- BEGIN AWS Agent Toolkit rules -->
 # AWS Guidance for the new AWS experience

@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: detector-features
+Version: 0.1.0
+Summary: Ekstrakcja 38 cech stylometrycznych — jedyne źródło cech dla treningu i inference (ADR-0002, ADR-0015).
+Requires-Python: >=3.12
+Requires-Dist: spacy==3.8.13
+Requires-Dist: numpy>=1.26
+Requires-Dist: networkx>=3.0
+Requires-Dist: ts2vg>=1.2
+Provides-Extra: test
+Requires-Dist: pytest>=8; extra == "test"
