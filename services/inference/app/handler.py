@@ -20,7 +20,7 @@ import spacy  # noqa: E402 — import mierzony osobno (tysiące plików bibliote
 
 IMPORT_SECONDS = round(time.perf_counter() - _import_started, 3)
 
-SPACY_MODEL = os.environ.get("SPACY_MODEL", "pl_core_news_lg")
+SPACY_MODEL = os.environ.get("SPACY_MODEL", "pl_core_news_md")  # ADR-0015
 _load_started = time.perf_counter()
 NLP = spacy.load(SPACY_MODEL, disable=["ner", "textcat"])
 INIT_SECONDS = round(time.perf_counter() - _load_started, 3)

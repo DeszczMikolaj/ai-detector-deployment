@@ -12,7 +12,7 @@ Instrukcje dla agentów AI (Codex, Claude Code, Cursor) i dla ludzi pracujących
 
 ## O projekcie (skrót)
 Projekt wdrożeniowy (studencki, ale ze standardami produkcyjnymi):
-- **Inference:** klient wysyła tekst → klasyfikator (XGBoost na cechach stylometrycznych, spaCy `pl_core_news_lg`) zwraca ocenę AI vs człowiek. AWS Lambda (container image) za API Gateway.
+- **Inference:** klient wysyła tekst → klasyfikator (XGBoost na cechach stylometrycznych, spaCy `pl_core_news_md` 3.8.0 — ADR-0015) zwraca ocenę AI vs człowiek. AWS Lambda (container image) za API Gateway.
 - **Retraining (admin):** nowe próbki ludzkie → generacja próbek AI lokalnymi LLM-ami → trening → champion vs challenger → promocja tylko lepszego modelu. Efemeryczne zasoby (AWS Batch, workery CPU na Spot, GPU opcjonalne — ADR-0010).
 - **Panel admina:** Spring Boot + Spring Security + Postgres na EC2 (Docker Compose) — ADR-0011. Python tylko w części ML (Lambda, workery, `packages/features/`).
 
