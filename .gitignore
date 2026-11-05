@@ -23,6 +23,7 @@ terraform.rc
 
 # Python
 __pycache__/
+*.egg-info/
 *.py[cod]
 .venv/
 venv/
@@ -38,3 +39,6 @@ build/
 *.iml
 .DS_Store
 Thumbs.db
+
+# Artefakty treningu (modele, cache cech) — trafiają do S3, nie do gita (AGENTS.md, zasada 3)
+artifacts/

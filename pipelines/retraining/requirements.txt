@@ -1,0 +1,7 @@
+# Środowisko treningowe (lokalnie lub worker Batch). Uruchamiać z katalogu głównego repo:
+#   pip install -r pipelines/retraining/requirements.txt
+-e ./packages/features
+https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl
+xgboost>=3.0,<4
+scikit-learn>=1.5
+pandas>=2.2
