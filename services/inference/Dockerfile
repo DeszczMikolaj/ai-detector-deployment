@@ -2,11 +2,12 @@
 # Cel: zmierzyć rozmiar obrazu, zużycie pamięci i cold start (ADR-0004). XGBoost i packages/features — później.
 #
 # Model spaCy wybierany przy budowaniu, np.:
-#   docker build --build-arg SPACY_MODEL=pl_core_news_md ...
+#   docker build --build-arg SPACY_MODEL=pl_core_news_sm ...
+# Domyślnie pl_core_news_md (ADR-0015).
 # Uwaga: model w inference musi być tym samym modelem, na którym trenowano klasyfikator (ADR-0002).
 FROM public.ecr.aws/lambda/python:3.12
 
-ARG SPACY_MODEL=pl_core_news_lg
+ARG SPACY_MODEL=pl_core_news_md
 ARG SPACY_MODEL_VERSION=3.8.0
 
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/

@@ -5,7 +5,7 @@ Format: decyzja → uzasadnienie → konsekwencje / trade-offy. Przyjętych ADR 
 | Nr | Tytuł | Status |
 |----|-------|--------|
 | [0001](0001-generator-lokalne-llm.md) | Generator próbek AI — lokalne LLM-y | przyjęta (konsekwencja „wymaga GPU” zastąpiona przez 0010) |
-| [0002](0002-detektor-xgboost-cpu.md) | Detektor — XGBoost na cechach stylometrycznych, CPU-only | przyjęta |
+| [0002](0002-detektor-xgboost-cpu.md) | Detektor — XGBoost na cechach stylometrycznych, CPU-only | przyjęta (model spaCy `lg` zastąpiony `md` przez 0015) |
 | [0003](0003-efemeryczny-pipeline.md) | Ciężki pipeline na efemerycznych zasobach | przyjęta co do zasady (doprecyzowana przez 0010) |
 | [0004](0004-inference-lambda.md) | Inference — Lambda (container image) za API Gateway | przyjęta („model w obrazie” zastąpiony przez 0012) |
 | [0005](0005-admin-ec2-compose.md) | Panel admina — EC2 + Docker Compose | przyjęta (wybór FastAPI zastąpiony przez 0011) |
@@ -18,7 +18,7 @@ Format: decyzja → uzasadnienie → konsekwencje / trade-offy. Przyjętych ADR 
 | [0012](0012-model-championa-z-s3.md) | Model championa ładowany z S3; obraz Lambdy zawiera tylko kod i spaCy | przyjęta |
 | [0013](0013-status-jobow-eventbridge-sqs.md) | Status jobów przez EventBridge i SQS (publisher–subscriber) | przyjęta |
 | [0014](0014-lustro-wag-llm-s3.md) | Lustro wag lokalnych LLM w S3 z przypiętymi wersjami | przyjęta |
-| [0015](0015-model-spacy-md-dla-inference.md) | Model spaCy `pl_core_news_md` zamiast `lg` (warunek utrzymania inference na Lambdzie) | proponowana — czeka na zespół ML |
+| [0015](0015-model-spacy-md-dla-inference.md) | Model spaCy `pl_core_news_md` zamiast `lg` — inference zostaje na Lambdzie | przyjęta |
 
 Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura → Decyzje architektoniczne (ADR). **Źródłem prawdy jest to repozytorium.**
 
@@ -26,7 +26,7 @@ Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura �
 - Dodanie próbek nie uruchamia automatycznie retrainingu: próbki trafiają do stanu `pending`, retraining uruchamia admin lub próg N nowych próbek (do potwierdzenia przy projektowaniu pipeline'u).
 
 ## Backlog (must have)
-- **Zespół ML:** przetrenować klasyfikator na cechach z `pl_core_news_md` i porównać jakość z `lg` na tym samym zbiorze testowym — rozstrzyga ADR-0015 ([spike](../spikes/2026-11-03-inference-lambda-cold-start.md)).
+- Przenieść pipeline cech z `ai-text-recognition` do `packages/features/` na `pl_core_news_md` (spaCy 3.8.13) i podłączyć model XGBoost z S3 w Lambdzie (ADR-0012, ADR-0015).
 - Zmierzyć kolejny cold start Lambdy z `md` (obraz w cache) i cold start z pełnym pipeline'em cech (ADR-0015).
 - Członkowie zespołu: zaproszenia e-mailem w AWS Settings (IAM Identity Center niedostępne w new AWS experience) (ADR-0008).
 - MFA na root (min. dwa urządzenia) zaraz po zakończeniu upgrade'u do planu Paid (ADR-0008).
