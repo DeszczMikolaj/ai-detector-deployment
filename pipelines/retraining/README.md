@@ -30,5 +30,14 @@ Liczenie cech jest najdłuższym krokiem. Wynik trafia do `features.csv` w katal
 
 Katalog `artifacts/` jest w `.gitignore` (AGENTS.md, zasada 3).
 
+## Wysłanie artefaktu do S3
+Każda wersja trafia do nowego prefiksu `models/<wersja>/` i nie jest później nadpisywana (ADR-0012). `features.csv` zostaje lokalnie.
+```powershell
+$bucket = terraform -chdir=infra\terraform\envs\dev output -raw artifacts_bucket_name
+aws s3 ls "s3://$bucket/models/v1/"     # musi być pusto — nie nadpisujemy wersji
+aws s3 cp artifacts\model-v1 "s3://$bucket/models/v1/" --recursive --exclude features.csv
+aws s3 ls "s3://$bucket/models/v1/"     # oczekiwane 4 pliki
+```
+
 ## Metryki
 Stratyfikowany podział 80/20 (`--test-size`, `--seed`), metryki na holdout: accuracy, F1 macro, MCC, ROC-AUC — zapisane w `metadata.json`. Protokół porównania champion vs challenger (stały zbiór testowy, próg promocji) — do ustalenia w briefie retrainingu (pytania 18–22).
