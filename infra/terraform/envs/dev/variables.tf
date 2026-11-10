@@ -56,3 +56,11 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+# --- Artefakty ML (ADR-0012, ADR-0014) ---
+
+variable "artifacts_noncurrent_retention_days" {
+  description = "Ile dni trzymamy poprzednie wersje nadpisanych lub usuniętych artefaktów w S3."
+  type        = number
+  default     = 90
+}

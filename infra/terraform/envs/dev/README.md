@@ -2,7 +2,17 @@
 
 Infrastruktura projektu w regionie `eu-north-1`. Stan w buckecie z `../../bootstrap`.
 
-Obecnie: **próbny przepływ inference** (ADR-0004) — ECR + Lambda z obrazem spaCy + API Gateway (HTTP API) z aliasem `champion`.
+Obecnie:
+- **próbny przepływ inference** (ADR-0004) — ECR + Lambda z obrazem spaCy + API Gateway (HTTP API) z aliasem `champion`,
+- **bucket artefaktów ML** (`artifacts.tf`, ADR-0012, ADR-0014) — modele, zbiory danych, wagi LLM, backupy.
+
+## Zmienne przy każdym `plan` (ważne)
+Terraform nie pamięta wartości `-var` z poprzednich uruchomień. Dopóki tag obrazu nie przychodzi z CI, **każdy** `plan` musi podawać aktualne wartości:
+```powershell
+terraform plan -var "inference_image_tag=<obecny tag>" -var "inference_timeout_s=<obecny timeout>" -out dev.tfplan
+```
+Bez nich `inference_image_tag` wraca do `null`, a plan **usuwa** Lambdę i API Gateway (oraz cofa timeout do domyślnych 30 s). Obecne wartości: `aws lambda get-function-configuration --function-name ai-text-detector-inference --query "[Timeout, Code.ImageUri]"`.
+Zasada: przy zmianie niezwiązanej z inference oczekujemy `0 to change, 0 to destroy`; inaczej nie robimy `apply`.
 
 ## Kolejność pierwszego wdrożenia (PowerShell, z katalogu głównego repo)
 
@@ -47,5 +57,20 @@ Szczegóły z CloudWatch (linie `REPORT`: `Init Duration`, `Duration`, `Max Memo
 aws logs tail /aws/lambda/ai-text-detector-inference --since 15m --format short | Select-String "REPORT"
 ```
 
+## Bucket artefaktów
+Nazwa: `terraform output -raw artifacts_bucket_name` (`ai-text-detector-artifacts-<konto>-eu-north-1`).
+
+Konwencja prefiksów (nie wymuszana przez S3):
+
+| Prefiks | Zawartość | Zasada |
+|---|---|---|
+| `models/<wersja>/` | `model.ubj`, `feature_profile.json`, `metadata.json`, `checksums.json` | zapis raz, bez nadpisywania |
+| `datasets/<nazwa>/<wersja>/` | `data.tsv`, `labels.tsv`, `manifest.json` | zapis raz; najpierw sprawdzić licencję zbioru |
+| `llm/<rodzina>/<wersja>/` | wagi lokalnych LLM (ADR-0014) | zapis raz |
+| `backups/` | `pg_dump` bazy (ADR-0005) | — |
+
+Zabezpieczenia: brak dostępu publicznego, wersjonowanie (poprzednie wersje znikają po 90 dniach — `artifacts_noncurrent_retention_days`), szyfrowanie SSE-S3, tylko HTTPS, `prevent_destroy`.
+
 ## Sprzątanie
-Lambda i API Gateway nie kosztują nic bez ruchu. Aby usunąć tylko je: `terraform apply` bez `inference_image_tag`. Całość: `terraform destroy`.
+Lambda i API Gateway nie kosztują nic bez ruchu. Aby usunąć tylko je: `terraform apply` bez `inference_image_tag`.
+`terraform destroy` zatrzyma się na buckecie artefaktów (`prevent_destroy`) — to celowe; jego usunięcie wymaga świadomej zmiany kodu i opróżnienia bucketa razem z wersjami.

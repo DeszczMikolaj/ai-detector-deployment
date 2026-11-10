@@ -35,7 +35,7 @@ Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura �
 - Schematy kontraktów Java ↔ Python (parametry jobów Batch, wiadomości SQS, artefakty w S3) jako JSON Schema w repo + testy kontraktowe (ADR-0011).
 - Pomiar pamięci Spring Boot + Postgres na t3.small; decyzja o t3.medium (ADR-0011).
 - Limit zapytań per IP dla anonimowego endpointu oceny: Cloudflare vs AWS WAF (ADR-0011).
-- Bucket S3 na modele: wersjonowanie, prefiksy zapisywane raz, polityka retencji starych wersji modeli i Lambdy (ADR-0012).
+- ~~Bucket S3 na modele~~ — gotowe (`infra/terraform/envs/dev/artifacts.tf`). Zostaje: polityka retencji starych wersji Lambdy (ADR-0012).
 - Reguła EventBridge (Batch → SQS `job-events`), DLQ z alarmem, schemat wiadomości postępu; idempotentny consumer w admin-api (ADR-0013).
 - Lustro wag LLM w S3 + katalog modeli w Postgresie (źródło, wersja, SHA-256, licencja); pomiar czasu pobierania przy pierwszym uruchomieniu (ADR-0014).
 - Pipeline generacji idempotentny i podzielny na porcje; dwie kolejki Batch (`spot`, `ondemand`) i przełącznik trybu awaryjnego w panelu admina (ADR-0010).
