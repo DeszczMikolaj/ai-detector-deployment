@@ -47,7 +47,7 @@ infra/terraform/          # IaC
 ## Komendy
 - **Pakiet cech:** `pip install -e packages/features[test]` + model `pl_core_news_md` 3.8.0 (link w `packages/features/README.md`); testy: `cd packages/features && pytest -q`.
 - **Trening + artefakt modelu:** `pip install -r pipelines/retraining/requirements.txt`, potem `python pipelines/retraining/train.py --data ... --labels ... --out artifacts/<nazwa>` (szczegóły: `pipelines/retraining/README.md`).
-- **Obraz inference:** `docker build --platform linux/amd64 --provenance=false -t <ecr>:<tag> services/inference` (szczegóły: `infra/terraform/envs/dev/README.md`).
+- **Inference:** testy `cd services/inference && pytest -q`; obraz z katalogu głównego repo: `docker build --platform linux/amd64 --provenance=false -f services/inference/Dockerfile -t <ecr>:<tag> .` (szczegóły: `services/inference/README.md`, `infra/terraform/envs/dev/README.md`).
 - **Infrastruktura:** `terraform plan` → review → `terraform apply` w `infra/terraform/...` (zasada 4).
 
 <!-- BEGIN AWS Agent Toolkit rules -->

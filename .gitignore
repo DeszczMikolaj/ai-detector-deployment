@@ -23,6 +23,7 @@ terraform.rc
 
 # Python
 __pycache__/
+.pytest_cache/
 *.egg-info/
 *.py[cod]
 .venv/

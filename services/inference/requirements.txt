@@ -1,3 +1,5 @@
-# Wersja spaCy przypięta do wersji używanej w treningu (ai-text-recognition) — ADR-0002, train/serve skew.
-# Model językowy (pl_core_news_*) instaluje Dockerfile na podstawie argumentu SPACY_MODEL.
+# Wersje przypięte (ADR-0002, ADR-0015). Pakiet cech (packages/features) i model spaCy instaluje Dockerfile.
 spacy==3.8.13
+# xgboost-cpu: ten sam silnik co xgboost, bez bibliotek NVIDIA (setki MB mniej w obrazie → krótszy cold start).
+# Wersja >= wersji użytej w treningu (metadata.json → xgboost_version).
+xgboost-cpu==3.4.1
