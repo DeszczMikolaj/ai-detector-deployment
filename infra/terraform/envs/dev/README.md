@@ -3,7 +3,7 @@
 Infrastruktura projektu w regionie `eu-north-1`. Stan w buckecie z `../../bootstrap`.
 
 Obecnie:
-- **próbny przepływ inference** (ADR-0004) — ECR + Lambda z obrazem spaCy + API Gateway (HTTP API) z aliasem `champion`,
+- **inference** (ADR-0004, ADR-0012) — ECR + Lambda (spaCy + XGBoost, model championa z S3 `models/<inference_model_version>/`) + API Gateway (HTTP API) z aliasem `champion`; kontrakt API: `services/inference/README.md`,
 - **bucket artefaktów ML** (`artifacts.tf`, ADR-0012, ADR-0014) — modele, zbiory danych, wagi LLM, backupy.
 
 ## Zmienne przy każdym `plan` (ważne)
@@ -32,13 +32,15 @@ $region = "eu-north-1"
 $registry = $repo.Split("/")[0]
 aws ecr get-login-password --region $region | docker login --username AWS --password-stdin $registry
 $tag = git rev-parse --short HEAD
-docker build --platform linux/amd64 --provenance=false -t "${repo}:$tag" services\inference
+docker build --platform linux/amd64 --provenance=false -f services\inference\Dockerfile -t "${repo}:$tag" .
 docker push "${repo}:$tag"
 docker images "${repo}"             # rozmiar obrazu
 ```
 `--provenance=false` jest wymagane — Lambda nie przyjmuje indeksów obrazów z atestacjami budowanymi domyślnie przez buildx.
+Kontekst budowania to katalog główny repo (obraz potrzebuje `packages/features`); co do niego trafia, określa `services/inference/Dockerfile.dockerignore`.
 
 ### 3. Lambda + API Gateway
+Model championa musi już leżeć w S3 pod `models/<inference_model_version>/` (domyślnie `v1`; wysyłka: `pipelines/retraining/README.md`).
 ```powershell
 cd infra\terraform\envs\dev
 terraform plan -var "inference_image_tag=$tag" -out dev.tfplan

@@ -1,0 +1,11 @@
+# Kontekst budowania = katalog główny repo. Wpuszczamy tylko to, czego potrzebuje obraz:
+# bez .git, artifacts/ (modele, features.csv), .venv, infra i dokumentacji.
+*
+!services/inference/requirements.txt
+!services/inference/app
+!packages/features
+**/__pycache__
+**/*.egg-info
+**/build
+packages/features/tests
+**/.pytest_cache

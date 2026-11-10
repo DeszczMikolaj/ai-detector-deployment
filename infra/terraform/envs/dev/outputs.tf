@@ -21,3 +21,8 @@ output "artifacts_bucket_name" {
   description = "Bucket na modele, zbiory danych i wagi LLM."
   value       = aws_s3_bucket.artifacts.bucket
 }
+
+output "inference_model_uri" {
+  description = "Prefiks S3 modelu, który serwuje Lambda."
+  value       = local.inference_enabled ? local.inference_model_uri : null
+}

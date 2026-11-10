@@ -21,6 +21,15 @@ variable "inference_image_tag" {
   default     = null
 }
 
+variable "inference_model_version" {
+  description = <<-EOT
+    Wersja modelu championa w buckecie artefaktów (prefiks models/<wersja>/) — ADR-0012.
+    Zmiana = nowa wersja Lambdy z nowym MODEL_URI. Docelowo promocję wykonuje admin-api.
+  EOT
+  type        = string
+  default     = "v1"
+}
+
 variable "inference_memory_mb" {
   description = "Pamięć Lambdy (MB). Moc CPU rośnie proporcjonalnie do pamięci. Do dostrojenia po pomiarach."
   type        = number

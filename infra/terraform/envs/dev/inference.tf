@@ -1,11 +1,12 @@
 # Lambda inference + API Gateway (ADR-0004). Tworzone dopiero, gdy podano var.inference_image_tag.
 
 locals {
-  inference_enabled = var.inference_image_tag != null
-  inference_name    = "${var.project}-inference"
+  inference_enabled   = var.inference_image_tag != null
+  inference_name      = "${var.project}-inference"
+  inference_model_uri = "s3://${aws_s3_bucket.artifacts.bucket}/models/${var.inference_model_version}/"
 }
 
-# --- Rola wykonawcza Lambdy: tylko zapis własnych logów ---
+# --- Rola wykonawcza Lambdy: zapis własnych logów + odczyt modeli z S3 ---
 
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
@@ -38,6 +39,22 @@ resource "aws_iam_role_policy" "inference_logs" {
   policy = data.aws_iam_policy_document.inference_logs.json
 }
 
+# Odczyt artefaktów modeli (ADR-0012): tylko GetObject, tylko prefiks models/.
+# Bez ListBucket — handler pobiera znane nazwy plików; brak pliku daje 403 zamiast 404.
+data "aws_iam_policy_document" "inference_models" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.artifacts.arn}/models/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "inference_models" {
+  count  = local.inference_enabled ? 1 : 0
+  name   = "read-models"
+  role   = aws_iam_role.inference[0].id
+  policy = data.aws_iam_policy_document.inference_models.json
+}
+
 # Grupa logów tworzona jawnie, żeby ustawić retencję (domyślnie logi żyją wiecznie i kosztują).
 resource "aws_cloudwatch_log_group" "inference" {
   count             = local.inference_enabled ? 1 : 0
@@ -63,12 +80,14 @@ resource "aws_lambda_function" "inference" {
   environment {
     variables = {
       MAX_TEXT_CHARS = tostring(var.inference_max_text_chars)
+      MODEL_URI      = local.inference_model_uri
     }
   }
 
   depends_on = [
     aws_cloudwatch_log_group.inference,
     aws_iam_role_policy.inference_logs,
+    aws_iam_role_policy.inference_models,
     aws_ecr_repository_policy.inference,
   ]
 }

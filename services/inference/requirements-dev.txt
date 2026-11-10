@@ -1,0 +1,4 @@
+# Testy lokalne (z katalogu services/inference):
+#   pip install -r requirements.txt -r requirements-dev.txt ../../packages/features <link do pl_core_news_md>
+pytest>=8
+boto3
