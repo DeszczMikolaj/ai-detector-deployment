@@ -16,3 +16,8 @@ output "evaluate_url" {
   description = "Publiczny endpoint oceny tekstu."
   value       = local.inference_enabled ? "${aws_apigatewayv2_stage.default[0].invoke_url}evaluate" : null
 }
+
+output "artifacts_bucket_name" {
+  description = "Bucket na modele, zbiory danych i wagi LLM."
+  value       = aws_s3_bucket.artifacts.bucket
+}
