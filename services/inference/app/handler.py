@@ -28,6 +28,7 @@ IMPORT_SECONDS = round(time.perf_counter() - _t0, 3)
 SPACY_MODEL = os.environ.get("SPACY_MODEL", DEFAULT_SPACY_MODEL)
 MODEL_URI = os.environ["MODEL_URI"]  # brak = błąd init; Lambda bez modelu nie powinna przyjmować ruchu
 MAX_TEXT_CHARS = int(os.environ.get("MAX_TEXT_CHARS", "20000"))
+SHAP_METHOD = os.environ.get("SHAP_METHOD", "exact")  # ADR-0016
 
 _t0 = time.perf_counter()
 NLP = load_nlp(SPACY_MODEL)
@@ -39,6 +40,7 @@ MODEL = artifact.load(
     spacy_model=SPACY_MODEL,
     spacy_model_version=NLP.meta.get("version", "unknown"),
     workdir=Path(os.environ.get("MODEL_WORKDIR", "/tmp/model")),
+    shap_method=SHAP_METHOD,
 )
 MODEL_LOAD_SECONDS = round(time.perf_counter() - _t0, 3)
 
@@ -50,6 +52,8 @@ print(json.dumps({
     "feature_schema_version": FEATURE_SCHEMA_VERSION,
     "spacy_model": SPACY_MODEL,
     "trained_with_xgboost": MODEL.metadata.get("xgboost_version"),
+    "shap_method": MODEL.shap_method,
+    "ood_top_features_source": MODEL.top_features_source,
     "import_seconds": IMPORT_SECONDS,
     "spacy_load_seconds": SPACY_LOAD_SECONDS,
     "model_load_seconds": MODEL_LOAD_SECONDS,
@@ -106,6 +110,14 @@ def handler(event, context):
         "threshold": MODEL.threshold,
         "out_of_distribution": prediction.out_of_distribution,
         "ood_features": list(prediction.ood_features),
+        "explanation": {
+            "method": f"shap_{MODEL.shap_method}",
+            "base_value": round(prediction.base_value, 4),
+            "top_features": [
+                {"feature": c.feature, "value": round(c.value, 4), "shap": round(c.shap, 4), "towards": c.towards}
+                for c in prediction.top_contributions
+            ],
+        },
         "model_version": MODEL.version,
         "feature_schema_version": FEATURE_SCHEMA_VERSION,
         "timing": {
@@ -128,6 +140,9 @@ def handler(event, context):
         "cold_start": cold_start,
         "init_seconds": INIT_SECONDS if cold_start else None,
         "processing_ms": processing_ms,
+        "shap_ms": round(prediction.shap_ms, 1),
+        "shap_method": MODEL.shap_method,
+        "top_features": [c.feature for c in prediction.top_contributions],
         "request_id": request_id,
     }))
 

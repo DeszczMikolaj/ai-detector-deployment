@@ -24,7 +24,7 @@ Liczenie cech jest najdłuższym krokiem. Wynik trafia do `features.csv` w katal
 |---|---|---|
 | `model.ubj` | model XGBoost (natywny format binarny) | tak |
 | `feature_profile.json` | percentyle p1–p99, min/max, średnia per cecha na zbiorze treningowym — flaga OOD (ADR-0007) | tak |
-| `metadata.json` | schemat i lista cech, wersje (spaCy, model językowy, xgboost, pakiet cech), hiperparametry, podział danych, metryki holdout, hashe danych wejściowych, commit | tak |
+| `metadata.json` | schemat i lista cech, wersje (spaCy, model językowy, xgboost, pakiet cech), hiperparametry, podział danych, metryki holdout, **ranking ważności cech wg średniego \|SHAP\| na holdoucie** (flaga OOD — ADR-0007, ADR-0016), hashe danych wejściowych, commit | tak |
 | `checksums.json` | SHA-256 trzech plików powyżej — Lambda weryfikuje je przy starcie (ADR-0012) | tak |
 | `features.csv` | cache cech dla wszystkich próbek, z poprawnym nagłówkiem (38 cech + `label`) | **nie** |
 

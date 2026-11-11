@@ -11,7 +11,7 @@ Zaprojektować część administracyjną systemu: od dodania próbek ludzkich do
 
 ## Czego oczekujemy na wyjściu
 1. **Odpowiedź na każde pytanie** w formacie: _decyzja → uzasadnienie → odrzucona alternatywa_. Dopuszczalne „nie wiemy — potrzebny spike”, ale wtedy z właścicielem i terminem.
-2. **Propozycje ADR** (kolejne wolne numery, obecnie od ADR-0016) dla decyzji, które wiążą resztę systemu — w szczególności: trigger pipeline'u, strategia puli treningowej, protokół ewaluacji i reguła promocji.
+2. **Propozycje ADR** (kolejne wolne numery, obecnie od ADR-0017 — numer nadajemy przy otwieraniu PR, sprawdzając `docs/adr/`) dla decyzji, które wiążą resztę systemu — w szczególności: trigger pipeline'u, strategia puli treningowej, protokół ewaluacji i reguła promocji.
 3. **Diagram sekwencji** retrainingu w Mermaid w `docs/architecture/` (od kliknięcia admina do przełączenia aliasu lub odrzucenia challengera).
 4. **Kontrakty** (JSON Schema) dla danych przekraczających granicę Java ↔ Python: parametry joba, wiadomości postępu, manifest datasetu, raport ewaluacji.
 

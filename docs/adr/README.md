@@ -19,6 +19,7 @@ Format: decyzja → uzasadnienie → konsekwencje / trade-offy. Przyjętych ADR 
 | [0013](0013-status-jobow-eventbridge-sqs.md) | Status jobów przez EventBridge i SQS (publisher–subscriber) | przyjęta |
 | [0014](0014-lustro-wag-llm-s3.md) | Lustro wag lokalnych LLM w S3 z przypiętymi wersjami | przyjęta |
 | [0015](0015-model-spacy-md-dla-inference.md) | Model spaCy `pl_core_news_md` zamiast `lg` — inference zostaje na Lambdzie | przyjęta |
+| [0016](0016-wyjasnienie-wyniku-shap.md) | Wyjaśnienie wyniku: top 5 cech wg SHAP w odpowiedzi API | przyjęta |
 
 Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura → Decyzje architektoniczne (ADR). **Źródłem prawdy jest to repozytorium.**
 
@@ -30,6 +31,7 @@ Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura �
 - ~~Zmierzyć cold start z pełnym pipeline'em cech~~ — 3,6 s po bezczynności, timeout tylko przy pierwszym starcie nowego obrazu (spike, pomiar 2).
 - Wdrożenie nowej wersji Lambdy bez przełączania aliasu → rozgrzanie i test dymny na wersji → przełączenie `champion`; `ignore_changes` na aliasie w Terraformie (ADR-0012, spike pomiar 2).
 - Timeout Lambdy z powrotem do 30 s po wprowadzeniu rozgrzewania (dziś 120 s z czasu diagnozy).
+- Słownik 38 cech po polsku (krótki opis każdej cechy) do prezentacji wyjaśnień w UI (ADR-0016). Koszt SHAP w Lambdzie zweryfikowany: ~29 ms (`services/inference/README.md`).
 - Członkowie zespołu: zaproszenia e-mailem w AWS Settings (IAM Identity Center niedostępne w new AWS experience) (ADR-0008).
 - MFA na root (min. dwa urządzenia) zaraz po zakończeniu upgrade'u do planu Paid (ADR-0008).
 - Bramka walidacji schematu cech w pipeline retrainingu (liczba, kolejność, typy, zakresy kolumn) przed porównaniem champion vs challenger.
