@@ -11,7 +11,7 @@ Przykład (z katalogu głównego repo):
 Wynik w --out:
     model.ubj             — model XGBoost (format binarny UBJSON, natywny dla xgboost)
     feature_profile.json  — percentyle cech na zbiorze treningowym (flaga OOD — ADR-0007)
-    metadata.json         — schemat cech, wersje, hiperparametry, metryki, hashe danych
+    metadata.json         — schemat cech, wersje, hiperparametry, metryki, ranking SHAP cech, hashe danych
     checksums.json        — SHA-256 powyższych plików (weryfikacja w Lambdzie — ADR-0012)
     features.csv          — cechy policzone dla wszystkich próbek (cache; NIE wysyłać do S3 z modelem)
 """
@@ -63,6 +63,7 @@ XGB_PARAMS = {
 }
 
 PROFILE_PERCENTILES = (1, 5, 25, 50, 75, 95, 99)
+SHAP_MAX_SAMPLES = 5000  # globalny ranking SHAP liczony na próbce holdoutu (koszt ~ liniowy z liczbą wierszy)
 
 
 # ---------- dane wejściowe (zgodnie z ai-text-recognition/src/utils/load_data.py) ----------
@@ -150,6 +151,25 @@ def feature_profile(X: np.ndarray) -> dict:
     return {"schema_version": FEATURE_SCHEMA_VERSION, "n_samples": int(X.shape[0]), "features": profile}
 
 
+def shap_importance(model: xgb.XGBClassifier, X: np.ndarray, seed: int) -> dict:
+    """Globalna ważność cech = średnie |SHAP| na holdoucie (ADR-0007, ADR-0016).
+
+    Lambda używa `ranking` do flagi OOD (najważniejsze cechy); `mean_abs_shap` — do raportów w panelu admina.
+    """
+    if len(X) > SHAP_MAX_SAMPLES:
+        X = X[np.random.default_rng(seed).choice(len(X), SHAP_MAX_SAMPLES, replace=False)]
+    contribs = model.get_booster().predict(xgb.DMatrix(X), pred_contribs=True)[:, :-1]  # bez kolumny bias
+    mean_abs = np.abs(contribs).mean(axis=0)
+    order = np.argsort(-mean_abs, kind="stable")
+    return {
+        "method": "mean_abs_shap",
+        "dataset": "holdout",
+        "n_samples": int(len(X)),
+        "ranking": [FEATURE_NAMES[i] for i in order],
+        "mean_abs_shap": {FEATURE_NAMES[i]: float(mean_abs[i]) for i in order},
+    }
+
+
 def evaluate(model: xgb.XGBClassifier, X: np.ndarray, y: np.ndarray) -> dict:
     proba = model.predict_proba(X)[:, 1]
     pred = (proba >= 0.5).astype(int)
@@ -212,6 +232,10 @@ def main() -> None:
     metrics = {"holdout": evaluate(model, X_test, y_test), "train": evaluate(model, X_train, y_train)}
     print(json.dumps(metrics["holdout"], indent=2))
 
+    print("Ranking ważności cech (średnie |SHAP| na holdoucie)...")
+    importance = shap_importance(model, X_test, args.seed)
+    print("  top 5:", ", ".join(importance["ranking"][:5]))
+
     model_path = args.out / "model.ubj"
     model.save_model(model_path)
 
@@ -234,6 +258,7 @@ def main() -> None:
         "hyperparameters": params,
         "split": {"test_size": args.test_size, "seed": args.seed, "stratified": True},
         "metrics": metrics,
+        "feature_importance": importance,
         "data": {
             "n_samples": int(len(y_all)),
             "data_sha256": sha256_file(args.data),

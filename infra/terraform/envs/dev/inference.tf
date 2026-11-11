@@ -81,6 +81,7 @@ resource "aws_lambda_function" "inference" {
     variables = {
       MAX_TEXT_CHARS = tostring(var.inference_max_text_chars)
       MODEL_URI      = local.inference_model_uri
+      SHAP_METHOD    = var.inference_shap_method
     }
   }
 

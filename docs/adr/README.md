@@ -19,6 +19,7 @@ Format: decyzja → uzasadnienie → konsekwencje / trade-offy. Przyjętych ADR 
 | [0013](0013-status-jobow-eventbridge-sqs.md) | Status jobów przez EventBridge i SQS (publisher–subscriber) | przyjęta |
 | [0014](0014-lustro-wag-llm-s3.md) | Lustro wag lokalnych LLM w S3 z przypiętymi wersjami | przyjęta |
 | [0015](0015-model-spacy-md-dla-inference.md) | Model spaCy `pl_core_news_md` zamiast `lg` — inference zostaje na Lambdzie | przyjęta |
+| [0016](0016-wyjasnienie-wyniku-shap.md) | Wyjaśnienie wyniku: top 5 cech wg SHAP w odpowiedzi API | przyjęta |
 
 Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura → Decyzje architektoniczne (ADR). **Źródłem prawdy jest to repozytorium.**
 

@@ -67,8 +67,8 @@ def write_artifact(directory: Path, *, seed: int = 0) -> Path:
     return directory
 
 
-def load(directory: Path) -> artifact.ModelArtifact:
-    return artifact.load(str(directory), spacy_model=DEFAULT_SPACY_MODEL, spacy_model_version=SPACY_MODEL_VERSION)
+def load(directory: Path, **kwargs) -> artifact.ModelArtifact:
+    return artifact.load(str(directory), spacy_model=DEFAULT_SPACY_MODEL, spacy_model_version=SPACY_MODEL_VERSION, **kwargs)
 
 
 def rewrite_json(directory: Path, name: str, change) -> None:
@@ -213,6 +213,62 @@ def test_one_important_feature_out_of_range_is_ood(model_dir):
     assert pred.ood_features == (FEATURE_NAMES[model.top_features[0]],)
 
 
+# ---------- wyjaśnienie SHAP (ADR-0016) ----------
+
+
+def test_explanation_is_top5_by_abs_shap_and_consistent_with_model(model_dir):
+    model = load(model_dir)
+    x = np.zeros(N_FEATURES)
+    x[4], x[0] = 2.0, -1.5
+    pred = model.predict(x)
+
+    contribs = model.contributions(x)
+    margin = float(model.booster.predict(xgb.DMatrix(x.reshape(1, -1)), output_margin=True)[0])
+    assert contribs.sum() == pytest.approx(margin, abs=1e-4)  # SHAP + bias = logit
+    assert pred.base_value == pytest.approx(float(contribs[-1]))
+
+    top = pred.top_contributions
+    assert len(top) == artifact.EXPLAIN_TOP_K
+    assert [abs(c.shap) for c in top] == sorted((abs(c.shap) for c in top), reverse=True)
+    assert top[0].feature == FEATURE_NAMES[4]  # cecha decydująca o etykietach
+    assert top[0].value == 2.0
+    assert top[0].towards == "ai" and top[0].shap > 0
+    assert all(c.towards == ("ai" if c.shap > 0 else "human" if c.shap < 0 else None) for c in top)
+    assert pred.shap_ms >= 0
+
+
+def test_approx_shap_method(model_dir):
+    pred = load(model_dir, shap_method="approx").predict(np.zeros(N_FEATURES))
+    assert len(pred.top_contributions) == artifact.EXPLAIN_TOP_K
+
+
+def test_unknown_shap_method_is_rejected(model_dir):
+    with pytest.raises(artifact.ArtifactError, match="metoda SHAP"):
+        load(model_dir, shap_method="fast")
+
+
+def test_ood_uses_shap_ranking_from_metadata_when_present(model_dir):
+    ranking = [FEATURE_NAMES[i] for i in (30, 31, 32, 33, 34, 35)]
+    rewrite_json(model_dir, "metadata.json", lambda m: m.update(feature_importance={"method": "mean_abs_shap", "ranking": ranking}))
+    model = load(model_dir)
+    assert model.top_features_source == "mean_abs_shap"
+    assert model.top_features == (30, 31, 32, 33, 34)
+
+    x = np.zeros(N_FEATURES)
+    x[30] = 100.0
+    assert model.predict(x).out_of_distribution
+
+
+def test_v1_artifact_without_ranking_falls_back_to_gain(model_dir):
+    assert load(model_dir).top_features_source == "total_gain"
+
+
+def test_unknown_feature_in_ranking_is_rejected(model_dir):
+    rewrite_json(model_dir, "metadata.json", lambda m: m.update(feature_importance={"ranking": ["Nie_Ma_Takiej"]}))
+    with pytest.raises(artifact.ArtifactError, match="nieznane cechy"):
+        load(model_dir)
+
+
 # ---------- handler (kontrakt API) ----------
 
 
@@ -239,6 +295,12 @@ def test_handler_returns_prediction(handler_module, capsys):
     assert set(body["ood_features"]) <= set(FEATURE_NAMES)
     assert body["model_version"] == "v7"
     assert body["feature_schema_version"] == FEATURE_SCHEMA_VERSION
+
+    explanation = body["explanation"]
+    assert explanation["method"] == "shap_exact"
+    assert len(explanation["top_features"]) == 5
+    assert {"feature", "value", "shap", "towards"} == set(explanation["top_features"][0])
+    assert all(f["feature"] in FEATURE_NAMES and f["towards"] in {"ai", "human", None} for f in explanation["top_features"])
     assert body["timing"]["cold_start"] is True
 
     second = json.loads(handler_module.handler(_event({"text": TEXT}), None)["body"])

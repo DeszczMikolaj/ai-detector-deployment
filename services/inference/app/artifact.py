@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -32,6 +33,11 @@ ARTIFACT_FILES = ("model.ubj", "feature_profile.json", "metadata.json")
 OOD_LOW, OOD_HIGH = "p1", "p99"
 OOD_MIN_FEATURES = int(os.environ.get("OOD_MIN_FEATURES", "3"))
 OOD_TOP_K = int(os.environ.get("OOD_TOP_K", "5"))
+
+# Wyjaśnienie wyniku (ADR-0016): top N cech wg |SHAP| dla danej próbki.
+# exact = TreeSHAP (dokładny), approx = metoda Saabasa (~5× szybsza, mniej wiarygodna).
+SHAP_METHODS = ("exact", "approx")
+EXPLAIN_TOP_K = 5
 
 
 class ArtifactError(RuntimeError):
@@ -123,12 +129,23 @@ def verify_compatibility(metadata: dict, profile: dict, spacy_model: str, spacy_
 # ---------- model ----------
 
 
-def _top_feature_indices(booster: xgb.Booster, k: int) -> tuple[int, ...]:
-    """Najważniejsze cechy wg total_gain modelu.
+def _top_features(metadata: dict, booster: xgb.Booster, k: int) -> tuple[tuple[int, ...], str]:
+    """Najważniejsze cechy modelu dla flagi OOD (ADR-0007).
 
-    ADR-0007 mówi o ważności wg SHAP; total_gain to przybliżenie liczone z samego modelu, bez danych
-    treningowych. Gdy train.py zacznie zapisywać ranking SHAP w metadata.json, zastąpić tę funkcję.
+    Preferowany ranking globalny wg średniego |SHAP| zapisany przez train.py w metadata.json
+    (`feature_importance.ranking`). Starsze artefakty (np. v1) go nie mają — wtedy ranking total_gain
+    liczony z samego modelu.
     """
+    ranking = metadata.get("feature_importance", {}).get("ranking")
+    if ranking:
+        unknown = set(ranking) - set(FEATURE_NAMES)
+        if unknown:
+            raise ArtifactError(f"Ranking ważności zawiera nieznane cechy: {sorted(unknown)}")
+        return tuple(FEATURE_NAMES.index(name) for name in ranking[:k]), "mean_abs_shap"
+    return _top_by_gain(booster, k), "total_gain"
+
+
+def _top_by_gain(booster: xgb.Booster, k: int) -> tuple[int, ...]:
     scores = booster.get_score(importance_type="total_gain")
     index = {name: i for i, name in enumerate(FEATURE_NAMES)}
 
@@ -140,11 +157,22 @@ def _top_feature_indices(booster: xgb.Booster, k: int) -> tuple[int, ...]:
 
 
 @dataclass(frozen=True)
+class Contribution:
+    feature: str
+    value: float  # wartość cechy dla próbki
+    shap: float  # wpływ na wynik w skali log-odds; > 0 = w stronę klasy 1
+    towards: str | None  # etykieta klasy, w stronę której przesuwa wynik; None, gdy wpływ = 0
+
+
+@dataclass(frozen=True)
 class Prediction:
     ai_probability: float
     label: str
     out_of_distribution: bool
     ood_features: tuple[str, ...]
+    base_value: float  # wynik „średni” modelu (log-odds) — punkt odniesienia dla wartości SHAP
+    top_contributions: tuple[Contribution, ...]
+    shap_ms: float
 
 
 @dataclass(frozen=True)
@@ -157,6 +185,13 @@ class ModelArtifact:
     low: np.ndarray
     high: np.ndarray
     top_features: tuple[int, ...]
+    top_features_source: str
+    shap_method: str
+
+    def contributions(self, x: np.ndarray) -> np.ndarray:
+        """SHAP dla jednej próbki: 38 wartości + bias (ostatni element). Suma = logit wyniku."""
+        dmatrix = xgb.DMatrix(x.reshape(1, -1))
+        return self.booster.predict(dmatrix, pred_contribs=True, approx_contribs=self.shap_method == "approx")[0]
 
     def predict(self, features: np.ndarray) -> Prediction:
         x = np.asarray(features, dtype=np.float64).reshape(1, -1)
@@ -165,11 +200,28 @@ class ModelArtifact:
         outside = np.flatnonzero((x[0] < self.low) | (x[0] > self.high))
         flag = len(outside) >= OOD_MIN_FEATURES or any(i in self.top_features for i in outside)
 
+        started = time.perf_counter()
+        contribs = self.contributions(x)
+        shap_ms = (time.perf_counter() - started) * 1000
+        shap_values, base_value = contribs[:-1], float(contribs[-1])
+        top = np.argsort(-np.abs(shap_values), kind="stable")[:EXPLAIN_TOP_K]
+
         return Prediction(
             ai_probability=proba,
             label=self.labels[int(proba >= self.threshold)],
             out_of_distribution=bool(flag),
             ood_features=tuple(FEATURE_NAMES[i] for i in outside),
+            base_value=base_value,
+            top_contributions=tuple(
+                Contribution(
+                    feature=FEATURE_NAMES[i],
+                    value=float(x[0, i]),
+                    shap=float(shap_values[i]),
+                    towards=self.labels[1] if shap_values[i] > 0 else self.labels[0] if shap_values[i] < 0 else None,
+                )
+                for i in top
+            ),
+            shap_ms=shap_ms,
         )
 
 
@@ -178,7 +230,18 @@ def version_from_uri(uri: str) -> str:
     return uri.rstrip("/").rsplit("/", 1)[-1]
 
 
-def load(uri: str, *, spacy_model: str, spacy_model_version: str, workdir: Path = Path("/tmp/model"), s3_client=None) -> ModelArtifact:
+def load(
+    uri: str,
+    *,
+    spacy_model: str,
+    spacy_model_version: str,
+    workdir: Path = Path("/tmp/model"),
+    s3_client=None,
+    shap_method: str = "exact",
+) -> ModelArtifact:
+    if shap_method not in SHAP_METHODS:
+        raise ArtifactError(f"Nieznana metoda SHAP: {shap_method!r} (dozwolone: {', '.join(SHAP_METHODS)})")
+
     directory = fetch(uri, workdir, s3_client)
     verify_checksums(directory)
 
@@ -194,6 +257,7 @@ def load(uri: str, *, spacy_model: str, spacy_model_version: str, workdir: Path 
 
     features = profile["features"]
     labels = {int(k): v for k, v in metadata.get("label_meaning", {"0": "human", "1": "ai"}).items()}
+    top_features, top_features_source = _top_features(metadata, booster, OOD_TOP_K)
 
     return ModelArtifact(
         version=version_from_uri(uri),
@@ -203,5 +267,7 @@ def load(uri: str, *, spacy_model: str, spacy_model_version: str, workdir: Path 
         labels=labels,
         low=np.array([features[name][OOD_LOW] for name in FEATURE_NAMES]),
         high=np.array([features[name][OOD_HIGH] for name in FEATURE_NAMES]),
-        top_features=_top_feature_indices(booster, OOD_TOP_K),
+        top_features=top_features,
+        top_features_source=top_features_source,
+        shap_method=shap_method,
     )

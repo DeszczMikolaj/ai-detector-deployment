@@ -30,6 +30,17 @@ variable "inference_model_version" {
   default     = "v1"
 }
 
+variable "inference_shap_method" {
+  description = "Metoda wyjaśnienia wyniku (ADR-0016): exact = TreeSHAP, approx = Saabas (~5× szybsza, mniej wiarygodna)."
+  type        = string
+  default     = "exact"
+
+  validation {
+    condition     = contains(["exact", "approx"], var.inference_shap_method)
+    error_message = "inference_shap_method musi mieć wartość exact albo approx."
+  }
+}
+
 variable "inference_memory_mb" {
   description = "Pamięć Lambdy (MB). Moc CPU rośnie proporcjonalnie do pamięci. Do dostrojenia po pomiarach."
   type        = number
