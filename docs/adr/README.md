@@ -26,8 +26,10 @@ Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura �
 - Dodanie próbek nie uruchamia automatycznie retrainingu: próbki trafiają do stanu `pending`, retraining uruchamia admin lub próg N nowych próbek (do potwierdzenia przy projektowaniu pipeline'u).
 
 ## Backlog (must have)
-- Przenieść pipeline cech z `ai-text-recognition` do `packages/features/` na `pl_core_news_md` (spaCy 3.8.13) i podłączyć model XGBoost z S3 w Lambdzie (ADR-0012, ADR-0015).
-- Zmierzyć kolejny cold start Lambdy z `md` (obraz w cache) i cold start z pełnym pipeline'em cech (ADR-0015).
+- ~~Przenieść pipeline cech do `packages/features/` i podłączyć model XGBoost z S3 w Lambdzie~~ — gotowe (PR #9, #11).
+- ~~Zmierzyć cold start z pełnym pipeline'em cech~~ — 3,6 s po bezczynności, timeout tylko przy pierwszym starcie nowego obrazu (spike, pomiar 2).
+- Wdrożenie nowej wersji Lambdy bez przełączania aliasu → rozgrzanie i test dymny na wersji → przełączenie `champion`; `ignore_changes` na aliasie w Terraformie (ADR-0012, spike pomiar 2).
+- Timeout Lambdy z powrotem do 30 s po wprowadzeniu rozgrzewania (dziś 120 s z czasu diagnozy).
 - Członkowie zespołu: zaproszenia e-mailem w AWS Settings (IAM Identity Center niedostępne w new AWS experience) (ADR-0008).
 - MFA na root (min. dwa urządzenia) zaraz po zakończeniu upgrade'u do planu Paid (ADR-0008).
 - Bramka walidacji schematu cech w pipeline retrainingu (liczba, kolejność, typy, zakresy kolumn) przed porównaniem champion vs challenger.
