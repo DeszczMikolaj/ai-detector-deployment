@@ -73,6 +73,14 @@ Konwencja prefiksów (nie wymuszana przez S3):
 
 Zabezpieczenia: brak dostępu publicznego, wersjonowanie (poprzednie wersje znikają po 90 dniach — `artifacts_noncurrent_retention_days`), szyfrowanie SSE-S3, tylko HTTPS, `prevent_destroy`.
 
+### 5. Po wdrożeniu nowego obrazu: rozgrzanie
+Pierwsze uruchomienia świeżo wdrożonego obrazu doczytują go z ECR i przekraczają limit fazy init (10 s) — pierwsze zapytania mogą dostać **503**. Po rozgrzaniu cold start trwa ~3,6 s (spike `docs/spikes/2026-11-03-inference-lambda-cold-start.md`, pomiar 2).
+Dopóki alias przełącza Terraform, zaraz po `apply` wywołaj endpoint kilka razy, aż dostaniesz `200`:
+```powershell
+1..5 | % { try { (Invoke-RestMethod -Method Post -Uri $url -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes('{"text": "Test rozgrzewający."}'))).timing | ConvertTo-Json -Compress } catch { $_.Exception.Message } }
+```
+Docelowo: nowa wersja rozgrzewana i testowana **przed** przełączeniem aliasu `champion` (ADR-0012, pkt 4).
+
 ## Sprzątanie
 Lambda i API Gateway nie kosztują nic bez ruchu. Aby usunąć tylko je: `terraform apply` bez `inference_image_tag`.
 `terraform destroy` zatrzyma się na buckecie artefaktów (`prevent_destroy`) — to celowe; jego usunięcie wymaga świadomej zmiany kodu i opróżnienia bucketa razem z wersjami.
