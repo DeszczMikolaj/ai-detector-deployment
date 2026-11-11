@@ -52,6 +52,8 @@ Błędy:
 
 **Najważniejsze cechy dla OOD:** ranking wg średniego |SHAP| z `metadata.json` (`feature_importance`, zapisuje go `train.py`). Artefakt `v1` go nie ma — wtedy ranking `total_gain` z modelu (log `init` → `ood_top_features_source`). Progi: `OOD_MIN_FEATURES`, `OOD_TOP_K`.
 
+**Koszt wyjaśnienia (pomiar w Lambdzie, 2026-11-11, obraz `e044a90`, 3008 MB):** `shap_ms` 28,5–29,2 ms, `processing_ms` (cechy + predykcja + SHAP) ~48–50 ms warm. Kryterium ADR-0016 (< 50 ms na SHAP) spełnione — zostaje `SHAP_METHOD=exact`.
+
 **Prezentacja w UI (ADR-0016):** nazwy cech i log-odds są nieczytelne dla użytkownika — UI potrzebuje słownika cech po polsku i powinno pokazywać kierunek („w stronę AI / człowieka”), nie surowe liczby. SHAP wyjaśnia, na co patrzy model, a nie dowodzi, że tekst jest AI.
 
 ## Zmienne środowiskowe

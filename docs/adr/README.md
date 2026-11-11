@@ -31,6 +31,7 @@ Lustro do przeglądania: Confluence, przestrzeń TAI-DETEKTOR → Architektura �
 - ~~Zmierzyć cold start z pełnym pipeline'em cech~~ — 3,6 s po bezczynności, timeout tylko przy pierwszym starcie nowego obrazu (spike, pomiar 2).
 - Wdrożenie nowej wersji Lambdy bez przełączania aliasu → rozgrzanie i test dymny na wersji → przełączenie `champion`; `ignore_changes` na aliasie w Terraformie (ADR-0012, spike pomiar 2).
 - Timeout Lambdy z powrotem do 30 s po wprowadzeniu rozgrzewania (dziś 120 s z czasu diagnozy).
+- Słownik 38 cech po polsku (krótki opis każdej cechy) do prezentacji wyjaśnień w UI (ADR-0016). Koszt SHAP w Lambdzie zweryfikowany: ~29 ms (`services/inference/README.md`).
 - Członkowie zespołu: zaproszenia e-mailem w AWS Settings (IAM Identity Center niedostępne w new AWS experience) (ADR-0008).
 - MFA na root (min. dwa urządzenia) zaraz po zakończeniu upgrade'u do planu Paid (ADR-0008).
 - Bramka walidacji schematu cech w pipeline retrainingu (liczba, kolejność, typy, zakresy kolumn) przed porównaniem champion vs challenger.
