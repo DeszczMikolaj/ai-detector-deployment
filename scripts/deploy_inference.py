@@ -12,7 +12,7 @@ Użycie (PowerShell, z katalogu głównego repo, po `terraform apply`):
     python scripts/deploy_inference.py --version 5         # konkretna wersja (np. rollback)
     python scripts/deploy_inference.py --no-switch         # tylko rozgrzanie i test
 
-Wymaga: boto3 i kluczy AWS (aws login + export-credentials).
+Wymaga: boto3[crt] (rozszerzenie crt obsługuje sesję z `aws login`) albo kluczy w zmiennych AWS_* (export-credentials).
 Uprawnienia: lambda:InvokeFunction, GetAlias, UpdateAlias, GetFunctionConfiguration, ListVersionsByFunction.
 """
 

@@ -54,7 +54,7 @@ terraform output inference_latest_version   # nowa wersja — jeszcze bez ruchu
 Pierwsze uruchomienia świeżo wdrożonego obrazu doczytują go z ECR i mogą przekroczyć limit fazy init (10 s) — gdyby trafili na nie klienci, dostaliby **503** (spike `docs/spikes/2026-11-03-inference-lambda-cold-start.md`, pomiar 2). Dlatego nową wersję wywołujemy najpierw bezpośrednio, z pominięciem API Gateway:
 ```powershell
 cd ..\..\..\..
-pip install boto3          # jednorazowo
+uv pip install "boto3[crt]"   # jednorazowo; [crt] jest potrzebne do logowania przez `aws login`
 python scripts/deploy_inference.py --expect-model-version v1
 ```
 Skrypt:
