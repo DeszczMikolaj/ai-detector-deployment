@@ -48,9 +48,13 @@ variable "inference_memory_mb" {
 }
 
 variable "inference_timeout_s" {
-  description = "Maksymalny czas jednego wywołania (s)."
+  description = <<-EOT
+    Maksymalny czas jednego wywołania (s). Klient i tak czeka maks. 29 s (limit API Gateway), ale dłuższy
+    timeout pozwala dokończyć powtórzony init po timeoucie fazy init (pierwszy start nowego obrazu: ~34 s)
+    — środowisko staje się ciepłe zamiast ginąć w pętli. Spike 2026-11-03, pomiar 2.
+  EOT
   type        = number
-  default     = 30
+  default     = 60
 }
 
 variable "inference_max_text_chars" {

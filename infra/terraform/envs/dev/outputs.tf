@@ -8,8 +8,13 @@ output "inference_function_name" {
 }
 
 output "inference_version" {
-  description = "Wersja Lambdy, na którą wskazuje alias champion."
+  description = "Wersja Lambdy, na którą wskazuje alias champion (przełącza ją scripts/deploy_inference.py)."
   value       = local.inference_enabled ? aws_lambda_alias.champion[0].function_version : null
+}
+
+output "inference_latest_version" {
+  description = "Najnowsza opublikowana wersja Lambdy — kandydat do przełączenia aliasu."
+  value       = local.inference_enabled ? aws_lambda_function.inference[0].version : null
 }
 
 output "evaluate_url" {

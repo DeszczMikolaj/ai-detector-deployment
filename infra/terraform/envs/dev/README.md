@@ -9,9 +9,9 @@ Obecnie:
 ## Zmienne przy każdym `plan` (ważne)
 Terraform nie pamięta wartości `-var` z poprzednich uruchomień. Dopóki tag obrazu nie przychodzi z CI, **każdy** `plan` musi podawać aktualne wartości:
 ```powershell
-terraform plan -var "inference_image_tag=<obecny tag>" -var "inference_timeout_s=<obecny timeout>" -out dev.tfplan
+terraform plan -var "inference_image_tag=<obecny tag>" -out dev.tfplan
 ```
-Bez nich `inference_image_tag` wraca do `null`, a plan **usuwa** Lambdę i API Gateway (oraz cofa timeout do domyślnych 30 s). Obecne wartości: `aws lambda get-function-configuration --function-name ai-text-detector-inference --query "[Timeout, Code.ImageUri]"`.
+Bez tego `inference_image_tag` wraca do `null`, a plan **usuwa** Lambdę i API Gateway. Obecny tag: `aws lambda get-function-configuration --function-name ai-text-detector-inference --qualifier champion --query Code.ImageUri`.
 Zasada: przy zmianie niezwiązanej z inference oczekujemy `0 to change, 0 to destroy`; inaczej nie robimy `apply`.
 
 ## Kolejność pierwszego wdrożenia (PowerShell, z katalogu głównego repo)
@@ -39,24 +39,41 @@ docker images "${repo}"             # rozmiar obrazu
 `--provenance=false` jest wymagane — Lambda nie przyjmuje indeksów obrazów z atestacjami budowanymi domyślnie przez buildx.
 Kontekst budowania to katalog główny repo (obraz potrzebuje `packages/features`); co do niego trafia, określa `services/inference/Dockerfile.dockerignore`.
 
-### 3. Lambda + API Gateway
+### 3. Lambda + API Gateway (nowa wersja)
 Model championa musi już leżeć w S3 pod `models/<inference_model_version>/` (domyślnie `v1`; wysyłka: `pipelines/retraining/README.md`).
 ```powershell
 cd infra\terraform\envs\dev
 terraform plan -var "inference_image_tag=$tag" -out dev.tfplan
 terraform apply dev.tfplan
-$url = terraform output -raw evaluate_url
+terraform output inference_version          # wersja, którą widzą klienci (alias champion)
+terraform output inference_latest_version   # nowa wersja — jeszcze bez ruchu
 ```
+**`apply` nie przełącza klientów na nową wersję.** Każda zmiana Lambdy publikuje nową, niezmienną wersję, ale alias `champion` ma w Terraformie `ignore_changes` — przy pierwszym utworzeniu wskazuje najnowszą wersję, później przełącza go wyłącznie krok 4 (docelowo także admin-api przy promocji modelu, ADR-0012). Źródłem prawdy o wersji championa jest AWS.
 
-### 4. Pomiar
+### 4. Rozgrzanie, test dymny i przełączenie aliasu
+Pierwsze uruchomienia świeżo wdrożonego obrazu doczytują go z ECR i mogą przekroczyć limit fazy init (10 s) — gdyby trafili na nie klienci, dostaliby **503** (spike `docs/spikes/2026-11-03-inference-lambda-cold-start.md`, pomiar 2). Dlatego nową wersję wywołujemy najpierw bezpośrednio, z pominięciem API Gateway:
 ```powershell
-$body = '{"text": "Wczoraj wieczorem poszedłem do kina. Film był długi, ale bardzo ciekawy i dobrze zagrany."}'
-Invoke-RestMethod -Method Post -Uri $url -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body))
+cd ..\..\..\..
+uv pip install "boto3[crt]"   # jednorazowo; [crt] jest potrzebne do logowania przez `aws login`
+python scripts/deploy_inference.py --expect-model-version v1
 ```
-Pierwsze wywołanie = cold start (`timing.cold_start = true`, `timing.init_seconds`). Kolejne = warm.
-Szczegóły z CloudWatch (linie `REPORT`: `Init Duration`, `Duration`, `Max Memory Used`):
+Skrypt:
+1. rozgrzewa najnowszą wersję (do 6 prób, aż odpowie `200`),
+2. robi test dymny — 3 oceny tekstu (etykieta, prawdopodobieństwo, 5 cech w `explanation`, wersja modelu) i odrzucenie pustego tekstu (`400`),
+3. przełącza alias `champion` (z `RevisionId` — nie nadpisze równoległej zmiany).
+
+Przy błędzie alias zostaje bez zmian. Opcje: `--version N` (konkretna wersja, także **rollback**: skrypt na końcu wypisuje komendę powrotu), `--no-switch` (tylko test).
+
+### 5. Sprawdzenie przez API
 ```powershell
-aws logs tail /aws/lambda/ai-text-detector-inference --since 15m --format short | Select-String "REPORT"
+cd infra\terraform\envs\dev
+$url = terraform output -raw evaluate_url
+$body = '{"text": "Wczoraj wieczorem poszedłem do kina. Film był długi, ale bardzo ciekawy i dobrze zagrany."}'
+Invoke-RestMethod -Method Post -Uri $url -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($body)) | ConvertTo-Json -Depth 5
+```
+Szczegóły z CloudWatch (linie `REPORT`: `Init Duration`, `Duration`, `Max Memory Used`; logi `evaluate`: `processing_ms`, `shap_ms`):
+```powershell
+aws logs tail /aws/lambda/ai-text-detector-inference --since 15m --format short | Select-String "REPORT|shap_ms"
 ```
 
 ## Bucket artefaktów
@@ -72,14 +89,6 @@ Konwencja prefiksów (nie wymuszana przez S3):
 | `backups/` | `pg_dump` bazy (ADR-0005) | — |
 
 Zabezpieczenia: brak dostępu publicznego, wersjonowanie (poprzednie wersje znikają po 90 dniach — `artifacts_noncurrent_retention_days`), szyfrowanie SSE-S3, tylko HTTPS, `prevent_destroy`.
-
-### 5. Po wdrożeniu nowego obrazu: rozgrzanie
-Pierwsze uruchomienia świeżo wdrożonego obrazu doczytują go z ECR i przekraczają limit fazy init (10 s) — pierwsze zapytania mogą dostać **503**. Po rozgrzaniu cold start trwa ~3,6 s (spike `docs/spikes/2026-11-03-inference-lambda-cold-start.md`, pomiar 2).
-Dopóki alias przełącza Terraform, zaraz po `apply` wywołaj endpoint kilka razy, aż dostaniesz `200`:
-```powershell
-1..5 | % { try { (Invoke-RestMethod -Method Post -Uri $url -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes('{"text": "Test rozgrzewający."}'))).timing | ConvertTo-Json -Compress } catch { $_.Exception.Message } }
-```
-Docelowo: nowa wersja rozgrzewana i testowana **przed** przełączeniem aliasu `champion` (ADR-0012, pkt 4).
 
 ## Sprzątanie
 Lambda i API Gateway nie kosztują nic bez ruchu. Aby usunąć tylko je: `terraform apply` bez `inference_image_tag`.
