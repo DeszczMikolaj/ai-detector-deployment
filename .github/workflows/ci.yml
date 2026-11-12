@@ -1,0 +1,80 @@
+# CI: testy i statyczne sprawdzenie Terraformu na każdym PR i pushu do main.
+# Ten workflow NIE łączy się z AWS — nie potrzebuje żadnych uprawnień ani sekretów.
+# Plan Terraformu na PR i wdrożenie po merge'u: osobne workflowy (OIDC, ADR-0017).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12" # jak w obrazie Lambdy (public.ecr.aws/lambda/python:3.12)
+  SPACY_MODEL_WHEEL: https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl
+
+jobs:
+  python-tests:
+    name: Testy Pythona
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            packages/features/pyproject.toml
+            services/inference/requirements*.txt
+
+      - name: Instalacja zależności
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            -r services/inference/requirements.txt \
+            -r services/inference/requirements-dev.txt \
+            "./packages/features[test]" \
+            "$SPACY_MODEL_WHEEL"
+
+      - name: Pakiet cech (kontrakt schematu)
+        working-directory: packages/features
+        run: pytest -q
+
+      - name: Inference (artefakt, OOD, SHAP, kontrakt API)
+        working-directory: services/inference
+        run: pytest -q
+
+      - name: Skrypt wdrożenia
+        run: pytest -q scripts/tests
+
+  terraform-checks:
+    name: Terraform fmt i validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.16.0"
+
+      - name: Formatowanie
+        run: terraform fmt -check -recursive -diff infra/terraform
+
+      # -backend=false: bez dostępu do stanu w S3 — validate sprawdza tylko składnię i typy.
+      - name: Validate
+        run: |
+          for dir in infra/terraform/bootstrap infra/terraform/envs/dev; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
