@@ -94,14 +94,18 @@ resource "aws_lambda_function" "inference" {
 }
 
 # Alias `champion` — API zawsze woła alias, nigdy wersję bezpośrednio (ADR-0004, ADR-0012).
-# TODO: na etapie tracera Terraform przestawia alias na najnowszą wersję przy każdym apply.
-# Docelowo (ADR-0012) alias przestawia admin-api przy promocji — wtedy dodać:
-#   lifecycle { ignore_changes = [function_version] }
+# Terraform tworzy alias, ale NIE przełącza go przy kolejnych `apply`: nowa wersja trafia do klientów
+# dopiero po rozgrzaniu i teście dymnym — `scripts/deploy_inference.py` (docelowo także admin-api przy
+# promocji modelu). Źródłem prawdy o wersji championa jest więc AWS, nie ten plik.
 resource "aws_lambda_alias" "champion" {
   count            = local.inference_enabled ? 1 : 0
   name             = "champion"
   function_name    = aws_lambda_function.inference[0].function_name
   function_version = aws_lambda_function.inference[0].version
+
+  lifecycle {
+    ignore_changes = [function_version]
+  }
 }
 
 # --- API Gateway (HTTP API) ---
