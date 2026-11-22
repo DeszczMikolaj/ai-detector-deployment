@@ -108,10 +108,11 @@ variable "batch_max_vcpus" {
 variable "batch_instance_types" {
   description = <<-EOT
     Typy lub rodziny instancji. Generacja na CPU jest ograniczona przepustowością RAM (ADR-0010) — nowsze rodziny
-    ogólnego przeznaczenia z DDR5. Kilka rodzin zwiększa szansę na pojemność Spot.
+    z szybką pamięcią. Kilka rodzin zwiększa szansę na pojemność Spot. Tylko rodziny dostępne w AWS Batch
+    w eu-north-1 (m6a nie jest — CreateComputeEnvironment zwraca listę dozwolonych typów).
   EOT
   type        = list(string)
-  default     = ["m7i", "m7a", "m6i", "m6a"]
+  default     = ["m7i", "m7a", "m6i", "c7i"]
 }
 
 variable "batch_runnable_timeout_s" {
