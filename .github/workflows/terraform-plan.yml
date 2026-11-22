@@ -56,10 +56,16 @@ jobs:
       # Plan porównuje kod z AWS przy obecnie serwowanym obrazie — tak jak ręczne `-var` z README.
       - name: Tag obrazu wersji champion
         id: image
+        # ImageUri zwraca `get-function` (sekcja Code), nie `get-function-configuration`.
         run: |
-          uri=$(aws lambda get-function-configuration --function-name "$LAMBDA_FUNCTION" \
+          uri=$(aws lambda get-function --function-name "$LAMBDA_FUNCTION" \
                   --qualifier champion --query Code.ImageUri --output text)
-          echo "tag=${uri##*:}" >> "$GITHUB_OUTPUT"
+          tag="${uri##*:}"
+          if [ -z "$tag" ] || [ "$tag" = "None" ] || [ "$tag" = "$uri" ]; then
+            echo "::error::Nie udało się odczytać tagu obrazu championa (ImageUri: '$uri')."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Obecny obraz championa: $uri"
 
       - name: terraform init
