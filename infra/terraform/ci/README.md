@@ -5,7 +5,7 @@ Dostawca OIDC GitHuba i dwie role IAM:
 | Rola | Kto może jej użyć (warunek `sub` w tokenie) | Uprawnienia |
 |---|---|---|
 | `github-actions-ai-text-detector-plan` | workflow uruchomiony przez PR z tego repo (`repo:DeszczMikolaj@47246350/ai-detector-deployment@1439709252:pull_request`). PR-y z forków nie dostają tokenu OIDC. | `ReadOnlyAccess` + zapis i usuwanie pliku blokady stanu (`envs/*.tflock`) |
-| `github-actions-ai-text-detector-deploy` | tylko job w GitHub Environment `dev` (`repo:DeszczMikolaj@47246350/ai-detector-deployment@1439709252:environment:dev`) | `PowerUserAccess` + IAM wyłącznie na rolach `ai-text-detector-*` + jawny zakaz zmiany ról CI i dostawcy OIDC |
+| `github-actions-ai-text-detector-deploy` | tylko job w GitHub Environment `dev` (`repo:DeszczMikolaj@47246350/ai-detector-deployment@1439709252:environment:dev`) | `PowerUserAccess` + IAM wyłącznie na rolach i profilach instancji `ai-text-detector-*` + jawny zakaz zmiany ról CI i dostawcy OIDC |
 
 **Ten stack stosuje wyłącznie człowiek, nigdy CI.** Inaczej workflow mógłby sam sobie dopisać uprawnienia. Z tego samego powodu nazwy ról CI nie zaczynają się od `ai-text-detector-`.
 
