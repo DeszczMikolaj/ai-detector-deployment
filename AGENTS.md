@@ -49,6 +49,7 @@ infra/terraform/          # IaC
 - **Trening + artefakt modelu:** `pip install -r pipelines/retraining/requirements.txt`, potem `python pipelines/retraining/train.py --data ... --labels ... --out artifacts/<nazwa>` (szczegóły: `pipelines/retraining/README.md`).
 - **Inference:** testy `cd services/inference && pytest -q`; obraz z katalogu głównego repo: `docker build --platform linux/amd64 --provenance=false -f services/inference/Dockerfile -t <ecr>:<tag> .` (szczegóły: `services/inference/README.md`, `infra/terraform/envs/dev/README.md`).
 - **Wdrożenie Lambdy:** `terraform apply` publikuje nową wersję bez ruchu; klientów przełącza `python scripts/deploy_inference.py` (rozgrzanie → test dymny → alias `champion`). Testy: `pytest -q scripts/tests`.
+- **CI (GitHub Actions, `.github/workflows/ci.yml`):** na każdym PR i pushu do `main` — testy trzech pakietów Pythona oraz `terraform fmt -check` i `validate`. Przed pushem: `terraform fmt -recursive infra/terraform`.
 - **Infrastruktura:** `terraform plan` → review → `terraform apply` w `infra/terraform/...` (zasada 4).
 
 <!-- BEGIN AWS Agent Toolkit rules -->
