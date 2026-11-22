@@ -13,6 +13,11 @@ locals {
   state_bucket     = "${var.project}-tfstate-${local.account_id}-${var.region}"
   plan_role_name   = "github-actions-${var.project}-plan"
   deploy_role_name = "github-actions-${var.project}-deploy"
+
+  # Prefiks `sub` w formacie z niezmiennymi ID (GitHub, od 15.07.2026 dla nowych repozytoriów).
+  github_owner   = split("/", var.github_repository)[0]
+  github_repo    = split("/", var.github_repository)[1]
+  github_subject = "repo:${local.github_owner}@${var.github_owner_id}/${local.github_repo}@${var.github_repository_id}"
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -43,7 +48,7 @@ data "aws_iam_policy_document" "plan_trust" {
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_host}:sub"
-      values   = ["repo:${var.github_repository}:pull_request"]
+      values   = ["${local.github_subject}:pull_request"]
     }
   }
 }
@@ -98,7 +103,7 @@ data "aws_iam_policy_document" "deploy_trust" {
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_host}:sub"
-      values   = ["repo:${var.github_repository}:environment:${var.github_deploy_environment}"]
+      values   = ["${local.github_subject}:environment:${var.github_deploy_environment}"]
     }
   }
 }
