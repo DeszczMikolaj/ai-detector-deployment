@@ -11,7 +11,7 @@ Terraform nie pamięta wartości `-var` z poprzednich uruchomień. Dopóki tag o
 ```powershell
 terraform plan -var "inference_image_tag=<obecny tag>" -out dev.tfplan
 ```
-Bez tego `inference_image_tag` wraca do `null`, a plan **usuwa** Lambdę i API Gateway. Obecny tag: `aws lambda get-function-configuration --function-name ai-text-detector-inference --qualifier champion --query Code.ImageUri`.
+Bez tego `inference_image_tag` wraca do `null`, a plan **usuwa** Lambdę i API Gateway. Obecny tag: `aws lambda get-function --function-name ai-text-detector-inference --qualifier champion --query Code.ImageUri --output text`.
 Zasada: przy zmianie niezwiązanej z inference oczekujemy `0 to change, 0 to destroy`; inaczej nie robimy `apply`.
 
 ## Kolejność pierwszego wdrożenia (PowerShell, z katalogu głównego repo)

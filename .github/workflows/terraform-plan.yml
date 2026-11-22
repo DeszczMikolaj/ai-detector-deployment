@@ -1,0 +1,129 @@
+# terraform plan dla envs/dev na każdym PR, który zmienia infrastrukturę — wynik jako komentarz w PR.
+# Rola tylko do odczytu przez OIDC (ADR-0017, infra/terraform/ci/). Nic nie zmienia w AWS
+# (poza chwilową blokadą stanu, którą plan zakłada i zdejmuje).
+name: Terraform plan
+
+on:
+  pull_request:
+    paths:
+      - "infra/terraform/envs/**"
+      - ".github/workflows/terraform-plan.yml"
+
+permissions:
+  id-token: write # token OIDC → rola plan w AWS
+  contents: read
+  pull-requests: write # komentarz z planem
+
+concurrency:
+  group: terraform-plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: eu-north-1
+  TF_DIR: infra/terraform/envs/dev
+  LAMBDA_FUNCTION: ai-text-detector-inference
+
+jobs:
+  plan:
+    name: Plan envs/dev
+    # PR-y z forków i tak nie dostają tokenu OIDC — pomijamy je jawnie zamiast kończyć błędem.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Bez tej zmiennej akcja AWS kończy się mało czytelnym "Could not load credentials".
+      - name: Sprawdzenie konfiguracji
+        env:
+          ROLE: ${{ vars.AWS_PLAN_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE" ]; then
+            echo "::error::Brak zmiennej repozytorium AWS_PLAN_ROLE_ARN (Settings → Secrets and variables → Actions → zakładka Variables → Repository variables). Patrz infra/terraform/ci/README.md."
+            exit 1
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.16.0"
+          terraform_wrapper: false
+
+      # Plan porównuje kod z AWS przy obecnie serwowanym obrazie — tak jak ręczne `-var` z README.
+      - name: Tag obrazu wersji champion
+        id: image
+        # ImageUri zwraca `get-function` (sekcja Code), nie `get-function-configuration`.
+        run: |
+          uri=$(aws lambda get-function --function-name "$LAMBDA_FUNCTION" \
+                  --qualifier champion --query Code.ImageUri --output text)
+          tag="${uri##*:}"
+          if [ -z "$tag" ] || [ "$tag" = "None" ] || [ "$tag" = "$uri" ]; then
+            echo "::error::Nie udało się odczytać tagu obrazu championa (ImageUri: '$uri')."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Obecny obraz championa: $uri"
+
+      - name: terraform init
+        run: terraform -chdir="$TF_DIR" init -input=false
+
+      - name: terraform plan
+        id: plan
+        run: |
+          set -o pipefail
+          terraform -chdir="$TF_DIR" plan -input=false -no-color -lock-timeout=60s \
+            -var "inference_image_tag=${{ steps.image.outputs.tag }}" -out tfplan | tee plan.log
+          terraform -chdir="$TF_DIR" show -no-color tfplan > plan.txt
+          # Gdy zmieniają się tylko outputy, Terraform nie wypisuje ani "Plan:", ani "No changes.".
+          summary=$(grep -E '^(Plan:|No changes\.)' plan.log | tail -1 || true)
+          if [ -z "$summary" ] && grep -q '^Changes to Outputs:' plan.log; then
+            summary="Brak zmian w zasobach (zmieniają się tylko outputy)"
+          fi
+          echo "summary=${summary:-brak podsumowania}" >> "$GITHUB_OUTPUT"
+
+      - name: Komentarz z planem
+        if: always() && steps.plan.outcome != 'skipped'
+        uses: actions/github-script@v7
+        env:
+          SUMMARY: ${{ steps.plan.outputs.summary }}
+          OUTCOME: ${{ steps.plan.outcome }}
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- terraform-plan:envs/dev -->';
+            const text = fs.existsSync('plan.txt') ? fs.readFileSync('plan.txt', 'utf8')
+                       : fs.existsSync('plan.log') ? fs.readFileSync('plan.log', 'utf8') : '(brak wyniku)';
+            const limit = 60000;
+            const shown = text.length > limit ? text.slice(0, limit) + '\n… (obcięte, pełny plan w logach joba)' : text;
+            const summary = process.env.SUMMARY || '';
+            const destroy = /([1-9]\d*) to destroy/.test(summary);
+            const header = process.env.OUTCOME !== 'success'
+              ? '❌ **terraform plan zakończył się błędem**'
+              : destroy ? `⚠️ **${summary}** — plan USUWA zasoby, sprawdź przed merge'em`
+                        : `✅ **${summary}**`;
+            const body = [
+              marker,
+              `### Terraform plan · \`envs/dev\``,
+              header,
+              `Obraz Lambdy: \`${process.env.IMAGE_TAG || '?'}\` (obecny champion) · commit ${context.sha.slice(0, 7)} · [logi](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              '<details><summary>Pełny plan</summary>',
+              '',
+              '```',
+              shown,
+              '```',
+              '</details>',
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              ...context.repo, issue_number: context.issue.number, per_page: 100,
+            });
+            const previous = comments.find(c => c.body.includes(marker));
+            if (previous) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
+            }
