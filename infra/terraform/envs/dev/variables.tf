@@ -88,3 +88,34 @@ variable "artifacts_noncurrent_retention_days" {
   type        = number
   default     = 90
 }
+
+# --- AWS Batch: ścieżka administracyjna (ADR-0010) ---
+
+variable "batch_max_vcpus" {
+  description = <<-EOT
+    Maksymalna łączna liczba vCPU workerów w każdym compute environmencie — „pojemność jako konfiguracja”
+    (ADR-0010, pkt 6). Musi mieścić się w quotach EC2 (Standard On-Demand i Spot: 40 vCPU w eu-north-1).
+  EOT
+  type        = number
+  default     = 16
+
+  validation {
+    condition     = var.batch_max_vcpus >= 0 && var.batch_max_vcpus <= 40
+    error_message = "batch_max_vcpus musi być w zakresie 0–40 (quota konta)."
+  }
+}
+
+variable "batch_instance_types" {
+  description = <<-EOT
+    Typy lub rodziny instancji. Generacja na CPU jest ograniczona przepustowością RAM (ADR-0010) — nowsze rodziny
+    ogólnego przeznaczenia z DDR5. Kilka rodzin zwiększa szansę na pojemność Spot.
+  EOT
+  type        = list(string)
+  default     = ["m7i", "m7a", "m6i", "m6a"]
+}
+
+variable "batch_runnable_timeout_s" {
+  description = "Po ilu sekundach zadanie zablokowane w RUNNABLE (brak pojemności, błędna konfiguracja) jest anulowane (ADR-0010, pkt 5)."
+  type        = number
+  default     = 900
+}
