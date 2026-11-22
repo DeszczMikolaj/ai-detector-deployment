@@ -72,7 +72,7 @@ jobs:
       # -backend=false: bez dostępu do stanu w S3 — validate sprawdza tylko składnię i typy.
       - name: Validate
         run: |
-          for dir in infra/terraform/bootstrap infra/terraform/envs/dev; do
+          for dir in infra/terraform/bootstrap infra/terraform/ci infra/terraform/envs/dev; do
             echo "::group::$dir"
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate
