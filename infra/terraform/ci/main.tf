@@ -48,9 +48,9 @@ data "aws_iam_policy_document" "plan_trust" {
   }
 }
 
+# Opisy ról w IAM: tylko ASCII/Latin-1 — API odrzuca polskie litery i półpauzę.
 resource "aws_iam_role" "plan" {
   name                 = local.plan_role_name
-  # Opis w IAM: tylko ASCII/Latin-1 — API odrzuca polskie litery i półpauzę.
   description          = "GitHub Actions: terraform plan on PRs, read-only (ADR-0017)"
   assume_role_policy   = data.aws_iam_policy_document.plan_trust.json
   max_session_duration = 3600
@@ -105,7 +105,6 @@ data "aws_iam_policy_document" "deploy_trust" {
 
 resource "aws_iam_role" "deploy" {
   name                 = local.deploy_role_name
-  # Opis w IAM: tylko ASCII/Latin-1 — API odrzuca polskie litery i półpauzę.
   description          = "GitHub Actions: build, terraform apply envs/*, Lambda alias switch (ADR-0017)"
   assume_role_policy   = data.aws_iam_policy_document.deploy_trust.json
   max_session_duration = 3600
