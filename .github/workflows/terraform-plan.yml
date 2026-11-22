@@ -33,6 +33,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Bez tej zmiennej akcja AWS kończy się mało czytelnym "Could not load credentials".
+      - name: Sprawdzenie konfiguracji
+        env:
+          ROLE: ${{ vars.AWS_PLAN_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE" ]; then
+            echo "::error::Brak zmiennej repozytorium AWS_PLAN_ROLE_ARN (Settings → Secrets and variables → Actions → zakładka Variables → Repository variables). Patrz infra/terraform/ci/README.md."
+            exit 1
+          fi
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
