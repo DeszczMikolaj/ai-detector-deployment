@@ -132,12 +132,13 @@ resource "aws_batch_compute_environment" "workers" {
 # lub błędnej konfiguracji jest anulowane (ADR-0010, pkt 5). Czekanie na wolne vCPU w ramach max_vcpus
 # (dużo porcji naraz) nie jest blokadą i nie podlega tej akcji.
 
+# Tylko te trzy powody obsługują jobStateTimeLimitActions. SERVICE_ROLE_PERMISSIONS, ACTION_REQUIRED
+# i UNDETERMINED wymagają ręcznej diagnozy — CreateJobQueue odrzuca je ("Invalid job reason").
 locals {
   batch_runnable_block_reasons = [
     "CAPACITY:INSUFFICIENT_INSTANCE_CAPACITY",
     "MISCONFIGURATION:COMPUTE_ENVIRONMENT_MAX_RESOURCE",
     "MISCONFIGURATION:JOB_RESOURCE_REQUIREMENT",
-    "MISCONFIGURATION:SERVICE_ROLE_PERMISSIONS",
   ]
 }
 
