@@ -78,7 +78,11 @@ jobs:
           terraform -chdir="$TF_DIR" plan -input=false -no-color -lock-timeout=60s \
             -var "inference_image_tag=${{ steps.image.outputs.tag }}" -out tfplan | tee plan.log
           terraform -chdir="$TF_DIR" show -no-color tfplan > plan.txt
-          summary=$(grep -E '^(Plan:|No changes\.)' plan.log | tail -1)
+          # Gdy zmieniają się tylko outputy, Terraform nie wypisuje ani "Plan:", ani "No changes.".
+          summary=$(grep -E '^(Plan:|No changes\.)' plan.log | tail -1 || true)
+          if [ -z "$summary" ] && grep -q '^Changes to Outputs:' plan.log; then
+            summary="Brak zmian w zasobach (zmieniają się tylko outputy)"
+          fi
           echo "summary=${summary:-brak podsumowania}" >> "$GITHUB_OUTPUT"
 
       - name: Komentarz z planem
