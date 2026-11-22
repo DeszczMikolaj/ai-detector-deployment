@@ -31,3 +31,8 @@ output "inference_model_uri" {
   description = "Prefiks S3 modelu, który serwuje Lambda."
   value       = local.inference_enabled ? local.inference_model_uri : null
 }
+
+output "batch_job_queues" {
+  description = "Kolejki AWS Batch: spot (domyślna) i ondemand (tryb awaryjny) — ADR-0010."
+  value       = { for k, q in aws_batch_job_queue.workers : k => q.arn }
+}

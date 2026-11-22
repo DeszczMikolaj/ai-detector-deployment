@@ -104,6 +104,26 @@ Konwencja prefiksów (nie wymuszana przez S3):
 
 Zabezpieczenia: brak dostępu publicznego, wersjonowanie (poprzednie wersje znikają po 90 dniach — `artifacts_noncurrent_retention_days`), szyfrowanie SSE-S3, tylko HTTPS, `prevent_destroy`.
 
+## AWS Batch (ścieżka administracyjna)
+`batch.tf` (ADR-0003, ADR-0010): workery generacji próbek AI, treningu i ewaluacji. Nie dotyczy oceny tekstu przez klienta (Lambda).
+
+| Kolejka | Compute environment | Kiedy |
+|---|---|---|
+| `ai-text-detector-spot` | EC2 Spot, `SPOT_CAPACITY_OPTIMIZED` | domyślnie |
+| `ai-text-detector-ondemand` | EC2 On-Demand, `BEST_FIT_PROGRESSIVE` | tryb awaryjny (przełącznik w panelu admina), prezentacja |
+
+- `min_vcpus = 0`: bez zadań nie działa żadna instancja i nic nie kosztuje. Pojemność: `batch_max_vcpus` (domyślnie 16, quota konta 40).
+- Rodziny instancji: `batch_instance_types` (`m7i`, `m7a`, `m6i`, `m6a`), czyli ogólnego przeznaczenia z szybką pamięcią.
+- Zadanie zablokowane w `RUNNABLE` (brak pojemności, błędna konfiguracja) jest anulowane po `batch_runnable_timeout_s` (15 min).
+- Sieć: domyślny VPC, publiczne podsieci, security group tylko z wyjściem HTTPS, bez ruchu przychodzącego. **Świadomy skrót:** pozwala uniknąć NAT Gateway. Produkcyjnie: prywatne podsieci i VPC endpoints.
+- Definicje zadań (obraz workera, zasoby, rola zadania z dostępem do S3) powstaną razem z kodem workera.
+
+Sprawdzenie po wdrożeniu (oba środowiska `VALID`, kolejki `ENABLED`, zero instancji):
+```powershell
+aws batch describe-compute-environments --query "computeEnvironments[].[computeEnvironmentName,status,state,computeResources.desiredvCpus]" --output table
+aws batch describe-job-queues --query "jobQueues[].[jobQueueName,status,state]" --output table
+```
+
 ## Sprzątanie
 Lambda i API Gateway nie kosztują nic bez ruchu. Aby usunąć tylko je: `terraform apply` bez `inference_image_tag`.
 `terraform destroy` zatrzyma się na buckecie artefaktów (`prevent_destroy`) — to celowe; jego usunięcie wymaga świadomej zmiany kodu i opróżnienia bucketa razem z wersjami.
