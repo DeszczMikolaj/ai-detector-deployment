@@ -14,6 +14,20 @@ terraform plan -var "inference_image_tag=<obecny tag>" -out dev.tfplan
 Bez tego `inference_image_tag` wraca do `null`, a plan **usuwa** Lambdę i API Gateway. Obecny tag: `aws lambda get-function --function-name ai-text-detector-inference --qualifier champion --query Code.ImageUri --output text`.
 Zasada: przy zmianie niezwiązanej z inference oczekujemy `0 to change, 0 to destroy`; inaczej nie robimy `apply`.
 
+## Wdrożenie przez CI (domyślne)
+Merge do `main` zmieniający `services/inference/**`, `packages/features/**` lub `infra/terraform/envs/**` uruchamia workflow **Deploy** (`.github/workflows/deploy.yml`, ADR-0017):
+
+1. job czeka na zatwierdzenie w Environment `dev`: **Actions → Deploy → Review deployments → Approve**,
+2. obraz jest budowany tylko wtedy, gdy zmienił się kod obrazu (tag = 7 znaków SHA commita); w przeciwnym razie zostaje obraz obecnego championa,
+3. `terraform plan` → **bezpiecznik**: plan usuwający jakikolwiek zasób przerywa wdrożenie → `apply`,
+4. `scripts/deploy_inference.py`: rozgrzanie nowej wersji, test dymny, przełączenie aliasu `champion`.
+
+Podsumowanie (obraz, wynik planu, wersja aliasu przed → po, komenda rollbacku) jest w zakładce *Summary* uruchomienia.
+Ponowne wdrożenie bez commita: **Actions → Deploy → Run workflow** (opcja „Zbuduj obraz” buduje obraz z bieżącego `main`).
+Rollback: lokalnie `python scripts/deploy_inference.py --version <poprzednia>` (numer jest w podsumowaniu).
+
+Kroki ręczne poniżej zostają na pierwsze wdrożenie i sytuacje awaryjne.
+
 ## Kolejność pierwszego wdrożenia (PowerShell, z katalogu głównego repo)
 
 ### 1. Repozytorium ECR
