@@ -52,7 +52,7 @@ infra/terraform/          # IaC
 - **CI (GitHub Actions, `.github/workflows/ci.yml`):** na każdym PR i pushu do `main` — testy trzech pakietów Pythona oraz `terraform fmt -check` i `validate`. Przed pushem: `terraform fmt -recursive infra/terraform`.
 - **Plan na PR (`.github/workflows/terraform-plan.yml`):** PR zmieniający `infra/terraform/envs/**` dostaje komentarz z `terraform plan` dla `envs/dev` (rola tylko do odczytu, ADR-0017). Komentarz jest aktualizowany przy każdym pushu.
 - **Wdrożenie (`.github/workflows/deploy.yml`):** po merge'u do `main` (zmiany w obrazie inference lub `infra/terraform/envs/**`) albo ręcznie; czeka na zatwierdzenie w Environment `dev`; build → plan → bezpiecznik „0 to destroy” → apply → `scripts/deploy_inference.py`.
-- **Role CI w AWS (`infra/terraform/ci/`, ADR-0017):** stosuje wyłącznie człowiek, nigdy CI. Role IAM tworzone w `envs/*` muszą mieć prefiks `ai-text-detector-` — inaczej rola wdrożeniowa CI nie może nimi zarządzać.
+- **Role CI w AWS (`infra/terraform/ci/`, ADR-0017):** stosuje wyłącznie człowiek, nigdy CI. Role IAM i profile instancji tworzone w `envs/*` muszą mieć prefiks `ai-text-detector-` — inaczej rola wdrożeniowa CI nie może nimi zarządzać.
 - **Infrastruktura:** `terraform plan` → review → `terraform apply` w `infra/terraform/...` (zasada 4).
 
 <!-- BEGIN AWS Agent Toolkit rules -->

@@ -147,6 +147,22 @@ data "aws_iam_policy_document" "deploy_iam" {
     resources = ["arn:aws:iam::${local.account_id}:role/${var.project}-*"]
   }
 
+  # Profile instancji EC2 (np. workery AWS Batch, ADR-0010) — tylko z prefiksem projektu.
+  statement {
+    sid = "ManageProjectInstanceProfiles"
+
+    actions = [
+      "iam:CreateInstanceProfile",
+      "iam:DeleteInstanceProfile",
+      "iam:GetInstanceProfile",
+      "iam:AddRoleToInstanceProfile",
+      "iam:RemoveRoleFromInstanceProfile",
+      "iam:TagInstanceProfile",
+      "iam:UntagInstanceProfile",
+    ]
+    resources = ["arn:aws:iam::${local.account_id}:instance-profile/${var.project}-*"]
+  }
+
   # Przekazanie roli usłudze (np. Lambda przyjmuje swoją rolę) — tylko role projektu i tylko usługom.
   statement {
     sid       = "PassProjectRolesToServices"
@@ -177,10 +193,12 @@ data "aws_iam_policy_document" "deploy_iam" {
       "iam:AddClientIDToOpenIDConnectProvider",
       "iam:RemoveClientIDFromOpenIDConnectProvider",
     ]
+    # ARN-y jako tekst, nie odwołania do zasobów: inaczej każda zmiana ról pokazuje w planie
+    # pozorną zmianę tej polityki ("known after apply").
     resources = [
-      aws_iam_role.plan.arn,
+      "arn:aws:iam::${local.account_id}:role/${local.plan_role_name}",
       "arn:aws:iam::${local.account_id}:role/${local.deploy_role_name}",
-      aws_iam_openid_connect_provider.github.arn,
+      "arn:aws:iam::${local.account_id}:oidc-provider/${local.oidc_host}",
     ]
   }
 }
