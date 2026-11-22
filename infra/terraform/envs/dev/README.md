@@ -113,7 +113,7 @@ Zabezpieczenia: brak dostępu publicznego, wersjonowanie (poprzednie wersje znik
 | `ai-text-detector-ondemand` | EC2 On-Demand, `BEST_FIT_PROGRESSIVE` | tryb awaryjny (przełącznik w panelu admina), prezentacja |
 
 - `min_vcpus = 0`: bez zadań nie działa żadna instancja i nic nie kosztuje. Pojemność: `batch_max_vcpus` (domyślnie 16, quota konta 40).
-- Rodziny instancji: `batch_instance_types` (`m7i`, `m7a`, `m6i`, `m6a`), czyli ogólnego przeznaczenia z szybką pamięcią.
+- Rodziny instancji: `batch_instance_types` (`m7i`, `m7a`, `m6i`, `c7i`) z szybką pamięcią. Tylko rodziny dostępne w Batch w `eu-north-1`: przy niedostępnej rodzinie `apply` kończy się błędem `Instance type can only be one of [...]`.
 - Zadanie zablokowane w `RUNNABLE` (brak pojemności, błędna konfiguracja) jest anulowane po `batch_runnable_timeout_s` (15 min).
 - Sieć: domyślny VPC, publiczne podsieci, security group tylko z wyjściem HTTPS, bez ruchu przychodzącego. **Świadomy skrót:** pozwala uniknąć NAT Gateway. Produkcyjnie: prywatne podsieci i VPC endpoints.
 - Definicje zadań (obraz workera, zasoby, rola zadania z dostępem do S3) powstaną razem z kodem workera.
