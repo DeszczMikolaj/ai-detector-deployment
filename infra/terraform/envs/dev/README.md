@@ -20,7 +20,8 @@ Merge do `main` zmieniający `services/inference/**`, `packages/features/**` lub
 1. job czeka na zatwierdzenie w Environment `dev`: **Actions → Deploy → Review deployments → Approve**,
 2. obraz jest budowany tylko wtedy, gdy zmienił się kod obrazu (tag = 7 znaków SHA commita); w przeciwnym razie zostaje obraz obecnego championa,
 3. `terraform plan` → **bezpiecznik**: plan usuwający jakikolwiek zasób przerywa wdrożenie → `apply`,
-4. `scripts/deploy_inference.py`: rozgrzanie nowej wersji, test dymny, przełączenie aliasu `champion`.
+4. **tylko gdy `apply` opublikował nową wersję Lambdy:** `scripts/deploy_inference.py`, czyli rozgrzanie, test dymny i przełączenie aliasu `champion`,
+5. **zawsze:** test publicznego `POST /evaluate` przez API Gateway: HTTP 200, `label`, `ai_probability`, 5 cech w `explanation`, oczekiwany `model_version`, a dla pustego tekstu 400. Wykrywa też zmiany, które psują inference bez nowej wersji Lambdy, np. IAM, throttling czy integrację API Gateway.
 
 Podsumowanie (obraz, wynik planu, wersja aliasu przed → po, komenda rollbacku) jest w zakładce *Summary* uruchomienia.
 Ponowne wdrożenie bez commita: **Actions → Deploy → Run workflow** (opcja „Zbuduj obraz” buduje obraz z bieżącego `main`).

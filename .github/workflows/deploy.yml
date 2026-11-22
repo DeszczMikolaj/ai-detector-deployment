@@ -1,7 +1,8 @@
 # Wdrożenie envs/dev po merge'u do main (albo ręcznie: Actions → Deploy → Run workflow).
 #   1. build i push obrazu inference (tylko gdy zmienił się jego kod; tag = SHA commita),
 #   2. terraform plan → bezpiecznik (nic nie może być usuwane) → apply,
-#   3. scripts/deploy_inference.py: rozgrzanie nowej wersji, test dymny, przełączenie aliasu champion.
+#   3. tylko gdy powstała nowa wersja Lambdy: scripts/deploy_inference.py (rozgrzanie, test dymny, alias champion),
+#   4. zawsze: test publicznego POST /evaluate (ścieżka klienta przez API Gateway).
 # Job działa w GitHub Environment `dev`: tylko z main i dopiero po zatwierdzeniu (ADR-0017).
 name: Deploy
 
@@ -156,23 +157,75 @@ jobs:
       - name: terraform apply
         run: terraform -chdir="$TF_DIR" apply -input=false -no-color -lock-timeout=120s tfplan
 
+      - name: Czy jest nowa wersja Lambdy?
+        id: versions
+        run: |
+          model_uri=$(terraform -chdir="$TF_DIR" output -raw inference_model_uri)
+          before=$(terraform -chdir="$TF_DIR" output -raw inference_version)
+          latest=$(terraform -chdir="$TF_DIR" output -raw inference_latest_version)
+          echo "model=$(basename "$model_uri")" >> "$GITHUB_OUTPUT"
+          echo "before=$before" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "url=$(terraform -chdir="$TF_DIR" output -raw evaluate_url)" >> "$GITHUB_OUTPUT"
+          echo "Alias champion: $before, najnowsza wersja: $latest"
+
+      # Tylko gdy apply opublikował nową wersję: bez tego klienci trafiliby na nierozgrzaną wersję.
       - uses: actions/setup-python@v5
+        if: steps.versions.outputs.latest != steps.versions.outputs.before
         with:
           python-version: "3.12"
 
       - name: Rozgrzanie, test dymny i przełączenie aliasu
         id: promote
+        if: steps.versions.outputs.latest != steps.versions.outputs.before
         run: |
           pip install --quiet boto3
-          model_uri=$(terraform -chdir="$TF_DIR" output -raw inference_model_uri)
-          model_version=$(basename "$model_uri")
-          before=$(terraform -chdir="$TF_DIR" output -raw inference_version)
-          python scripts/deploy_inference.py --expect-model-version "$model_version"
+          python scripts/deploy_inference.py --version "${{ steps.versions.outputs.latest }}" \
+            --expect-model-version "${{ steps.versions.outputs.model }}"
+
+      # Zawsze: ścieżka klienta (API Gateway → alias champion). Wykrywa też zmiany, które psują inference
+      # bez nowej wersji Lambdy (IAM do S3, throttling, integracja API Gateway).
+      - name: Test publicznego endpointu
+        id: endpoint
+        env:
+          URL: ${{ steps.versions.outputs.url }}
+          MODEL: ${{ steps.versions.outputs.model }}
+        run: |
+          text='Wczoraj wieczorem poszedłem do kina. Film był długi, ale bardzo ciekawy i dobrze zagrany. Po seansie rozmawialiśmy o nim jeszcze przez godzinę.'
+          body=$(jq -cn --arg t "$text" '{text: $t}')
+          for attempt in 1 2 3; do
+            status=$(curl -sS -o response.json -w '%{http_code}' --max-time 35 \
+                       -H 'content-type: application/json; charset=utf-8' -d "$body" "$URL" || echo 000)
+            echo "Próba $attempt: HTTP $status"
+            [ "$status" = "200" ] && break
+            sleep 5
+          done
+          if [ "$status" != "200" ]; then
+            echo "::error::POST /evaluate zwrócił HTTP $status"; cat response.json || true; exit 1
+          fi
+          jq -e --arg m "$MODEL" '
+            (.label == "ai" or .label == "human")
+            and (.ai_probability >= 0 and .ai_probability <= 1)
+            and (.explanation.top_features | length == 5)
+            and .model_version == $m' response.json >/dev/null \
+            || { echo "::error::Odpowiedź niezgodna z kontraktem"; cat response.json; exit 1; }
+          echo "label=$(jq -r .label response.json)" >> "$GITHUB_OUTPUT"
+          echo "processing_ms=$(jq -r .timing.processing_ms response.json)" >> "$GITHUB_OUTPUT"
+
+          empty=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 35 \
+                    -H 'content-type: application/json' -d '{"text": "   "}' "$URL")
+          if [ "$empty" != "400" ]; then
+            echo "::error::Pusty tekst powinien dać HTTP 400, jest $empty"; exit 1
+          fi
+          echo "Endpoint OK: $(jq -c '{label, ai_probability, model_version, timing}' response.json)"
+
+      - name: Alias po wdrożeniu
+        id: after
+        if: always() && steps.versions.outcome == 'success'
+        run: |
           after=$(aws lambda get-alias --function-name "$LAMBDA_FUNCTION" --name champion \
                     --query FunctionVersion --output text)
-          echo "before=$before" >> "$GITHUB_OUTPUT"
           echo "after=$after" >> "$GITHUB_OUTPUT"
-          echo "model=$model_version" >> "$GITHUB_OUTPUT"
 
       - name: Podsumowanie
         if: always()
@@ -180,9 +233,13 @@ jobs:
           TAG: ${{ steps.image.outputs.tag }}
           PUSHED: ${{ steps.image.outputs.push }}
           SUMMARY: ${{ steps.plan.outputs.summary }}
-          BEFORE: ${{ steps.promote.outputs.before }}
-          AFTER: ${{ steps.promote.outputs.after }}
-          MODEL: ${{ steps.promote.outputs.model }}
+          BEFORE: ${{ steps.versions.outputs.before }}
+          AFTER: ${{ steps.after.outputs.after }}
+          MODEL: ${{ steps.versions.outputs.model }}
+          PROMOTE: ${{ steps.promote.outcome }}
+          ENDPOINT: ${{ steps.endpoint.outcome }}
+          LABEL: ${{ steps.endpoint.outputs.label }}
+          PROCESSING_MS: ${{ steps.endpoint.outputs.processing_ms }}
         run: |
           {
             echo "### Wdrożenie dev"
@@ -191,7 +248,8 @@ jobs:
             echo "| Obraz | \`$TAG\` $([ "$PUSHED" = "true" ] && echo '(nowy)' || echo '(istniejący)') |"
             echo "| Terraform | ${SUMMARY:-—} |"
             echo "| Model | ${MODEL:-—} |"
-            echo "| Alias \`champion\` | ${BEFORE:-?} → ${AFTER:-?} |"
+            echo "| Alias \`champion\` | ${BEFORE:-?} → ${AFTER:-?} $([ "$PROMOTE" = "skipped" ] && echo '(bez nowej wersji — skrypt pominięty)') |"
+            echo "| Test \`POST /evaluate\` | ${ENDPOINT:-—} ${LABEL:+($LABEL, ${PROCESSING_MS} ms)} |"
             if [ -n "$BEFORE" ] && [ "$BEFORE" != "$AFTER" ]; then
               echo ""
               echo "Rollback: \`python scripts/deploy_inference.py --version $BEFORE\`"
