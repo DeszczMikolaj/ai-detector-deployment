@@ -8,6 +8,7 @@ Instrukcje dla agentów AI (Codex, Claude Code, Cursor) i dla ludzi pracujących
 - `docs/architecture/` — diagramy architektury (Mermaid).
 - `docs/spikes/` — wyniki eksperymentów technicznych (pomiary, wnioski).
 - `docs/design/` — briefy projektowe dla części w trakcie projektowania (np. pipeline retrainingu).
+- `docs/etapy/` — ostateczne dokumenty kamieni milowych oddane prowadzącemu (PDF, niezmienne), np. projekt prototypu (etap IV).
 - Jeśli zadanie jest sprzeczne z `kontekst-projektu.md` lub z przyjętym ADR — **zatrzymaj się i zgłoś konflikt**, nie rozwiązuj go po cichu.
 
 ## O projekcie (skrót)

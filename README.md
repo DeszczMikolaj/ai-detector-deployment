@@ -6,6 +6,7 @@ Klasyfikator tekstów polskich: wygenerowane przez AI czy napisane przez człowi
 - Decyzje architektoniczne: [`docs/adr/`](docs/adr/README.md)
 - Architektura (diagramy): [`docs/architecture/`](docs/architecture/README.md)
 - Briefy projektowe: [`docs/design/`](docs/design/)
+- Dokumenty etapów (kamienie milowe): [`docs/etapy/`](docs/etapy/README.md)
 - Zasady pracy w repo (ludzie i agenci AI): [`AGENTS.md`](AGENTS.md)
 
 ## Szybki start
